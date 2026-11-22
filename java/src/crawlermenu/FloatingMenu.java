@@ -124,6 +124,7 @@ final class FloatingMenu {
         coinMultiplierRow(p);
         p.addView(featureSwitch("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
         p.addView(featureSwitch("Godmode", NativeBridge.GODMODE));
+        p.addView(featureSwitch("No mana cost", NativeBridge.NO_MANA_COST));
         addCoinsRow(p);
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.

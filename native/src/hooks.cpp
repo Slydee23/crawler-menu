@@ -207,6 +207,38 @@ void install_stat_protection() {
     }
 }
 
+// --- No mana cost --------------------------------------------------------------------------
+// Observed: playing a card calls PlayerModel.TryUseMana(cost), which lowers PlayerStats.Mana;
+// whether a card is playable is decided by PlayerModel.CanAffordManaCost(cost) (asked constantly
+// for every card in hand). While the feature is on, every card is affordable and using mana
+// succeeds without spending any.
+using CanAffordFn = bool (*)(void* self, int count, const void* method);
+using TryUseManaFn = bool (*)(void* self, int count, bool update_view, const void* method);
+CanAffordFn g_orig_can_afford = nullptr;
+TryUseManaFn g_orig_try_use_mana = nullptr;
+
+bool no_mana_cost_on() { return features::is_enabled(features::kNoManaCost); }
+
+bool hook_can_afford_mana(void* self, int count, const void* method) {
+    SHADOWHOOK_STACK_SCOPE();
+    if (no_mana_cost_on()) return true;
+    return SHADOWHOOK_CALL_PREV(hook_can_afford_mana, self, count, method);
+}
+
+bool hook_try_use_mana(void* self, int count, bool update_view, const void* method) {
+    SHADOWHOOK_STACK_SCOPE();
+    if (no_mana_cost_on() && count > 0) return true;  // pretend it was paid
+    return SHADOWHOOK_CALL_PREV(hook_try_use_mana, self, count, update_view, method);
+}
+
+void install_no_mana_cost() {
+    hook("PlayerModel.CanAffordManaCost",
+         il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "CanAffordManaCost", 1),
+         reinterpret_cast<void*>(hook_can_afford_mana), reinterpret_cast<void**>(&g_orig_can_afford));
+    hook("PlayerModel.TryUseMana", il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "TryUseMana", 2),
+         reinterpret_cast<void*>(hook_try_use_mana), reinterpret_cast<void**>(&g_orig_try_use_mana));
+}
+
 }  // namespace
 
 void install_game_hooks() {
@@ -235,5 +267,6 @@ void install_game_hooks() {
     }
 
     install_stat_protection();
+    install_no_mana_cost();
 
 }

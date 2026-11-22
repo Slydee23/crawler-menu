@@ -8,6 +8,7 @@ final class NativeBridge {
     static final int COIN_MULTIPLIER = 1;
     static final int INFINITE_CHOICES = 2;
     static final int GODMODE = 3;
+    static final int NO_MANA_COST = 4;
 
     private NativeBridge() {}
 

@@ -11,6 +11,7 @@ enum Id : int {
     kCoinMultiplier = 1,   // coin pickups are multiplied by the feature's value
     kInfiniteChoices = 2,  // rerolls, skips and banishes never go down
     kGodmode = 3,          // player health never goes down
+    kNoManaCost = 4,       // cards are always affordable and cost no mana
 };
 
 void set_enabled(int id, bool enabled);
