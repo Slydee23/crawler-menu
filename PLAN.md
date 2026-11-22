@@ -19,7 +19,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Native lib loads in the game (log line via logcat): loaded from a smali patch in `Application.<clinit>`
 - [x] Hook library: ShadowHook v2.0.1 (submodule), CMake build (`tools/build-native.ps1`); `shadowhook_init` OK in the game (needs `libshadowhook_nothing.so` shipped next to our lib)
 - [x] Resolve a method by name via the IL2CPP API: background thread waits for `libil2cpp.so` + assembly `Pancake`, then finds `PlayerModel.AddCoins` (`native/src/il2cpp.*`)
-- [ ] Hook a resolved game method
+- [x] Hook a resolved game method: pass-through hook on `PlayerModel.AddCoins` logs every call (coin pickup = `coins=1, useGreed=0`; many `coins=0` calls during play). Readiness via a pass-through hook on `il2cpp_init` (calling `il2cpp_domain_get` before init finishes aborts the game)
 - [ ] First cheat end-to-end: Edit Money
 - [x] Local patch script: `tools/patch-apk.ps1` (user's APK → `build/patched.apk`, debug-signed)
 

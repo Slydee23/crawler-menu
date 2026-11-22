@@ -1,8 +1,10 @@
 #include "il2cpp.h"
 
+#include <atomic>
 #include <cstring>
 #include <unistd.h>
 
+#include <shadowhook.h>
 #include <xdl.h>
 
 #include "log.h"
@@ -18,7 +20,6 @@ struct MethodInfo;  // first field is the native code pointer
 struct Thread;
 
 struct Api {
-    const Image* (*get_corlib)();
     Domain* (*domain_get)();
     const Assembly** (*domain_get_assemblies)(const Domain*, size_t* count);
     const Image* (*assembly_get_image)(const Assembly*);
@@ -30,6 +31,18 @@ struct Api {
 };
 
 Api g_api{};
+std::atomic<bool> g_init_done{false};
+
+using InitFn = int (*)(const char* domain_name);
+InitFn g_orig_init = nullptr;
+
+int hook_il2cpp_init(const char* domain_name) {
+    SHADOWHOOK_STACK_SCOPE();
+    const int result = SHADOWHOOK_CALL_PREV(hook_il2cpp_init, domain_name);
+    g_init_done.store(true, std::memory_order_release);
+    LOGI("il2cpp: il2cpp_init(%s) finished", domain_name != nullptr ? domain_name : "null");
+    return result;
+}
 uintptr_t g_base = 0;
 thread_local Thread* t_thread = nullptr;
 
@@ -47,8 +60,7 @@ bool load_api() {
     xdl_info_t info{};
     if (xdl_info(handle, XDL_DI_DLINFO, &info) == 0) g_base = reinterpret_cast<uintptr_t>(info.dli_fbase);
 
-    bool ok = resolve(handle, "il2cpp_get_corlib", g_api.get_corlib) &&
-              resolve(handle, "il2cpp_domain_get", g_api.domain_get) &&
+    bool ok = resolve(handle, "il2cpp_domain_get", g_api.domain_get) &&
               resolve(handle, "il2cpp_domain_get_assemblies", g_api.domain_get_assemblies) &&
               resolve(handle, "il2cpp_assembly_get_image", g_api.assembly_get_image) &&
               resolve(handle, "il2cpp_image_get_name", g_api.image_get_name) &&
@@ -79,20 +91,31 @@ const Image* find_image(const char* assembly) {
 
 }  // namespace
 
+bool install_init_hook() {
+    // Returns a stub even while libil2cpp.so is not loaded yet (the hook stays pending).
+    void* stub = shadowhook_hook_sym_name("libil2cpp.so", "il2cpp_init", reinterpret_cast<void*>(hook_il2cpp_init),
+                                          reinterpret_cast<void**>(&g_orig_init));
+    if (stub == nullptr) {
+        const int err = shadowhook_get_errno();
+        LOGE("il2cpp: hook il2cpp_init failed (%d: %s)", err, shadowhook_to_errmsg(err));
+        return false;
+    }
+    return true;
+}
+
 bool wait_until_ready(const char* assembly, int timeout_ms) {
     constexpr int kStepMs = 100;
-    bool api_loaded = false;
     for (int waited = 0; waited < timeout_ms; waited += kStepMs, usleep(kStepMs * 1000)) {
-        if (!api_loaded) {
-            api_loaded = load_api();
-            if (!api_loaded) continue;
-            LOGI("il2cpp: libil2cpp.so found at 0x%lx after %d ms", static_cast<unsigned long>(g_base), waited);
+        // Touching the domain before il2cpp_init() returns aborts the process.
+        if (!g_init_done.load(std::memory_order_acquire)) continue;
+        if (g_api.domain_get == nullptr && !load_api()) {
+            LOGE("il2cpp: API exports missing");
+            return false;
         }
-        // corlib is set during il2cpp_init; before that, the domain must not be touched.
-        if (g_api.get_corlib() == nullptr) continue;
         if (find_image(assembly) == nullptr) continue;
         t_thread = g_api.thread_attach(g_api.domain_get());
-        LOGI("il2cpp: runtime ready (%s loaded) after %d ms", assembly, waited);
+        LOGI("il2cpp: runtime ready (%s loaded, libil2cpp at 0x%lx) after %d ms", assembly,
+             static_cast<unsigned long>(g_base), waited);
         return true;
     }
     return false;

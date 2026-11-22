@@ -4,25 +4,22 @@
 
 #include <shadowhook.h>
 
+#include "hooks.h"
 #include "il2cpp.h"
 #include "log.h"
 
 namespace {
 
-constexpr const char* kGameAssembly = "Pancake";
+constexpr const char* kGameAssembly = "Pancake";  // assembly with the game logic
 
-// Runs off the main thread: waits for the IL2CPP runtime, then resolves game methods.
+// Runs off the main thread: waits for the IL2CPP runtime, then hooks game methods.
 void* game_thread(void*) {
     if (!il2cpp::wait_until_ready(kGameAssembly, 60 * 1000)) {
         LOGE("il2cpp runtime not ready after 60 s, giving up");
         return nullptr;
     }
 
-    void* add_coins = il2cpp::find_method(kGameAssembly, "Nosebleed.Pancake.Models", "PlayerModel", "AddCoins", 2);
-    if (add_coins != nullptr) {
-        LOGI("Found PlayerModel.AddCoins at %p (libil2cpp+0x%lx)", add_coins,
-             static_cast<unsigned long>(reinterpret_cast<uintptr_t>(add_coins) - il2cpp::base()));
-    }
+    install_game_hooks();
 
     il2cpp::detach();
     return nullptr;
@@ -39,6 +36,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
         LOGE("shadowhook_init failed (%d: %s)", rc, shadowhook_to_errmsg(rc));
     } else {
         LOGI("shadowhook_init ok (version %s)", shadowhook_get_version());
+        il2cpp::install_init_hook();
     }
 
     pthread_t thread;

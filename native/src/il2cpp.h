@@ -5,7 +5,11 @@
 // Everything is resolved by name at runtime, so no hard-coded offsets.
 namespace il2cpp {
 
-// Blocks until libil2cpp.so is loaded and `assembly` (e.g. "Pancake") is initialized,
+// Registers a pass-through hook on il2cpp_init() so we know when the runtime is fully
+// initialized. Must be called before libil2cpp.so is loaded (i.e. from JNI_OnLoad).
+bool install_init_hook();
+
+// Blocks until il2cpp_init() has finished and `assembly` (e.g. "Pancake") is initialized,
 // then attaches the calling thread to the IL2CPP domain. Returns false on timeout.
 bool wait_until_ready(const char* assembly, int timeout_ms);
 
