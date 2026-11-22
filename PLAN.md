@@ -36,7 +36,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] One-hit kill: `EnemyModel.ResolveDamage` (returns `DamageResult` = 3 doubles) gets at least enemy health + armor + 1 as damage, so the game's armor/overkill handling still runs. Verified in game
 - [x] Combo never breaks: keeps the developer property `PlayerModel.DebugIsInCombo` set from the Update hook (every card continues the combo; ending the turn still ends it). Verified in game
 - [x] Menu redesign “gothic gaming”: near-black panel with double gold frame, blood red accents, serif headings; fixed compact size (380×240 dp, scrolls); icon sidebar COMBAT / ECONOMY / RUN / SETTINGS (last tab remembered). Code split into `Theme`, `Widgets`, `FloatingMenu`
-- [ ] Own vector icons for the sidebar (font glyphs look different per device)
+- [x] Own vector line icons for the sidebar (crossed swords, coin, skull, gear) in `Icons.java`; font glyphs looked different per device
 - [ ] Cheats: Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL

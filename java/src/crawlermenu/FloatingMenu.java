@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -57,11 +58,11 @@ final class FloatingMenu {
     /** One sidebar entry and its page. */
     private static final class Tab {
         final View item;
-        final TextView icon;
+        final Icons.Icon icon;
         final TextView caption;
         final View page;
 
-        Tab(View item, TextView icon, TextView caption, View page) {
+        Tab(View item, Icons.Icon icon, TextView caption, View page) {
             this.item = item;
             this.icon = icon;
             this.caption = caption;
@@ -195,24 +196,26 @@ final class FloatingMenu {
                 Color.blue(Theme.SIDEBAR)));
         side.setLayoutParams(new LinearLayout.LayoutParams(dp(SIDEBAR_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // ︎ asks for the plain text glyph instead of a colored emoji.
-        addTab(side, pages, "⚔︎", "Combat", combatPage());
-        addTab(side, pages, "¤", "Economy", economyPage());
-        addTab(side, pages, "☠︎", "Run", runPage());
+        addTab(side, pages, Icons.Kind.SWORDS, "Combat", combatPage());
+        addTab(side, pages, Icons.Kind.COIN, "Economy", economyPage());
+        addTab(side, pages, Icons.Kind.SKULL, "Run", runPage());
         side.addView(new View(activity), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        addTab(side, pages, "⚙︎", "Settings", settingsPage());
+        addTab(side, pages, Icons.Kind.GEAR, "Settings", settingsPage());
         return side;
     }
 
-    private void addTab(LinearLayout side, LinearLayout pages, String glyph, String name, View page) {
+    private void addTab(LinearLayout side, LinearLayout pages, Icons.Kind kind, String name, View page) {
         LinearLayout item = new LinearLayout(activity);
         item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER);
         item.setPadding(0, dp(7), 0, dp(7));
 
-        TextView icon = theme.body(glyph, 18, Theme.TEXT_MUTED);
-        icon.setGravity(Gravity.CENTER);
-        item.addView(icon);
+        Icons.Icon icon = Icons.create(kind, Theme.TEXT_MUTED);
+        ImageView iconView = new ImageView(activity);
+        iconView.setImageDrawable(icon);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        iconLp.bottomMargin = dp(3);
+        item.addView(iconView, iconLp);
         TextView caption = theme.heading(name, 7.5f, Theme.TEXT_MUTED);
         caption.setGravity(Gravity.CENTER);
         caption.setLetterSpacing(0.08f);
@@ -234,7 +237,7 @@ final class FloatingMenu {
             boolean active = i == index;
             t.page.setVisibility(active ? View.VISIBLE : View.GONE);
             t.item.setBackground(active ? activeTabBackground() : null);
-            t.icon.setTextColor(active ? Theme.GOLD : Theme.TEXT_MUTED);
+            t.icon.setColor(active ? Theme.GOLD : Theme.TEXT_MUTED);
             t.caption.setTextColor(active ? Theme.TEXT : Theme.TEXT_MUTED);
         }
         prefs.edit().putInt(PREF_LAST_TAB, index).apply();
