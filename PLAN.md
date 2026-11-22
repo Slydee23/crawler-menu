@@ -45,4 +45,4 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 ## Phase 4 — Release (code only)
 - [x] README: features, compatibility, build instructions, install with save backup, legal notes (no screenshots: they would show game art)
 - [ ] Optional: link from InventoryCrawler page
-- [ ] Tag v0.1.0 (source only, no APK)
+- [x] Tag v0.1.0 + GitHub release (source only, no APK): https://github.com/Slydee23/crawler-menu/releases/tag/v0.1.0
