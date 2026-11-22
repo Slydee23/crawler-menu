@@ -25,9 +25,12 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 
 ## Phase 3 — Menu
 - [x] Floating button + empty menu panel (Java, `java/src/crawlermenu/`), added to the activity decor view; started from a smali patch in `Application.attachBaseContext`, shipped as an extra `classesN.dex` (`tools/build-java.ps1`)
-- [ ] Draggable panel, colors matching the game
+- [x] Panel draggable by its title, accent color = blue of the game's menu buttons (#263FCD), background opacity slider (20-100 %, saved in SharedPreferences)
 - [ ] JNI bridge to native toggles/values
 - [ ] Cheats: Infinite rerolls · Combo never breaks · Godmode · No mana cost · One-hit kill · XP multiplier · Edit money · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
+
+## Later — QoL
+- [ ] (?) More QoL ideas from the user, to be collected once the cheats work
 
 ## Phase 4 — Release (code only)
 - [ ] README: features, build instructions, legal notes
