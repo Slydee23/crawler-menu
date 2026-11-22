@@ -43,6 +43,6 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work
 
 ## Phase 4 — Release (code only)
-- [ ] README: features, build instructions, legal notes
+- [x] README: features, compatibility, build instructions, install with save backup, legal notes (no screenshots: they would show game art)
 - [ ] Optional: link from InventoryCrawler page
 - [ ] Tag v0.1.0 (source only, no APK)
