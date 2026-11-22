@@ -14,6 +14,7 @@ enum Id : int {
     kNoManaCost = 4,       // cards are always affordable and cost no mana
     kXpMultiplier = 5,     // XP gains are multiplied by the feature's value
     kOneHitKill = 6,       // every hit on an enemy is lethal
+    kComboNeverBreaks = 7, // the card combo never resets
 };
 
 void set_enabled(int id, bool enabled);

@@ -34,7 +34,9 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] XP multiplier: “XP × [factor]”, applied at the entry points `PlayerModel.AddEnemyXp`/`AddGrowthXp` (multiplying inside `AddXp` raised the level silently without level-up choices). Verified in game (x50, level-ups with card choices)
 - [x] Robustness: the game thread waits up to 30 min for `il2cpp_init` (Unity only initializes once the game is visible; with the screen off it took 52 s, the old 60 s limit would have disabled all cheats)
 - [x] One-hit kill: `EnemyModel.ResolveDamage` (returns `DamageResult` = 3 doubles) gets at least enemy health + armor + 1 as damage, so the game's armor/overkill handling still runs. Verified in game
-- [ ] Cheats: Combo never breaks · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
+- [x] Combo never breaks: keeps the developer property `PlayerModel.DebugIsInCombo` set from the Update hook (every card continues the combo; ending the turn still ends it). Verified in game
+- [ ] Menu redesign: modern/minimal, gaming look, cheats in categories, smaller footprint
+- [ ] Cheats: Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work

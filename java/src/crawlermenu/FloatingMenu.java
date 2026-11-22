@@ -128,6 +128,7 @@ final class FloatingMenu {
         p.addView(featureSwitch("Godmode", NativeBridge.GODMODE));
         p.addView(featureSwitch("No mana cost", NativeBridge.NO_MANA_COST));
         p.addView(featureSwitch("One-hit kill", NativeBridge.ONE_HIT_KILL));
+        p.addView(featureSwitch("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
         addCoinsRow(p);
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.

@@ -11,6 +11,7 @@ final class NativeBridge {
     static final int NO_MANA_COST = 4;
     static final int XP_MULTIPLIER = 5;
     static final int ONE_HIT_KILL = 6;
+    static final int COMBO_NEVER_BREAKS = 7;
 
     private NativeBridge() {}
 

@@ -120,6 +120,8 @@ void refresh_player_stats(void* player) {
     }
 }
 
+void apply_combo_never_breaks(void* player);  // defined with the combo feature below
+
 // --- PlayerModel.Update() ---------------------------------------------------------------
 // Runs every frame on the game thread while a player exists. Carries out menu requests.
 using UpdateFn = void (*)(void* self, const void* method);
@@ -130,6 +132,7 @@ void hook_player_update(void* self, const void* method) {
     SHADOWHOOK_CALL_PREV(hook_player_update, self, method);
     features::mark_player_active();
     refresh_player_stats(self);
+    apply_combo_never_breaks(self);
 
     const int coins = features::take_queued_coins();
     if (coins > 0 && g_orig_add_coins != nullptr) {
@@ -311,6 +314,39 @@ void install_one_hit_kill() {
          reinterpret_cast<void*>(hook_enemy_resolve_damage), reinterpret_cast<void**>(&g_orig_enemy_resolve_damage));
 }
 
+// --- Combo never breaks ------------------------------------------------------------------------
+// PlayerModel has a developer property DebugIsInCombo: while it is set, every card continues the
+// combo (verified in game; ending the turn still ends the combo as usual). While the feature is
+// on, the PlayerModel.Update hook keeps it set and clears it again when the feature is turned off.
+using BoolGetterFn = bool (*)(void* self, const void* method);
+using BoolSetterFn = void (*)(void* self, bool value, const void* method);
+
+BoolGetterFn g_get_debug_in_combo = nullptr;
+BoolSetterFn g_set_debug_in_combo = nullptr;
+bool g_combo_forced = false;  // game thread only
+
+void apply_combo_never_breaks(void* player) {
+    if (g_get_debug_in_combo == nullptr || g_set_debug_in_combo == nullptr) return;
+    const bool on = features::is_enabled(features::kComboNeverBreaks);
+    if (on && !g_get_debug_in_combo(player, nullptr)) {
+        g_set_debug_in_combo(player, true, nullptr);
+        g_combo_forced = true;
+    } else if (!on && g_combo_forced) {
+        g_set_debug_in_combo(player, false, nullptr);
+        g_combo_forced = false;
+    }
+}
+
+void install_combo_never_breaks() {
+    g_get_debug_in_combo = reinterpret_cast<BoolGetterFn>(
+        il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "get_DebugIsInCombo", 0));
+    g_set_debug_in_combo = reinterpret_cast<BoolSetterFn>(
+        il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "set_DebugIsInCombo", 1));
+    if (g_get_debug_in_combo == nullptr || g_set_debug_in_combo == nullptr) {
+        LOGE("Combo never breaks unavailable: DebugIsInCombo not found");
+    }
+}
+
 }  // namespace
 
 void install_game_hooks() {
@@ -346,4 +382,5 @@ void install_game_hooks() {
     hook("PlayerModel.AddGrowthXp", il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "AddGrowthXp", 2),
          reinterpret_cast<void*>(hook_add_growth_xp), reinterpret_cast<void**>(&g_orig_add_growth_xp));
     install_one_hit_kill();
+    install_combo_never_breaks();
 }
