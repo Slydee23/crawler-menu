@@ -17,6 +17,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 ## Phase 2 — Proof of concept
 - Ignore the repack's "Downloaded from APKVISION.ORG" start toast (decided with the user)
 - [x] Native lib loads in the game (log line via logcat): loaded from a smali patch in `Application.<clinit>`
+- [x] Hook library: ShadowHook v2.0.1 (submodule), CMake build (`tools/build-native.ps1`); `shadowhook_init` OK in the game (needs `libshadowhook_nothing.so` shipped next to our lib)
 - [ ] Resolve one method by name via the IL2CPP API and hook it
 - [ ] First cheat end-to-end: Edit Money
 - [x] Local patch script: `tools/patch-apk.ps1` (user's APK → `build/patched.apk`, debug-signed)

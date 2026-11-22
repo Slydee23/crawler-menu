@@ -14,7 +14,7 @@ In-game mod menu (floating button + menu) for *Vampire Crawlers* on Android (Uni
 - Unofficial fan project, not affiliated with poncle / Nosebleed Interactive. Single-player only.
 
 ## Technical approach
-- Native hook library `libcrawlermenu.so` (C++, Android NDK, arm64-v8a). Hooks via an inline-hook library (Dobby, Apache-2.0).
+- Native hook library `libcrawlermenu.so` (C++, Android NDK, arm64-v8a). Hooks via the inline-hook library ShadowHook (ByteDance, MIT; git submodule `native/third_party/shadowhook`, pinned to v2.0.1). Dobby was the first plan but its current sources do not build with NDK r27.
 - Resolve game methods **by name at runtime** through the exported IL2CPP API (`il2cpp_domain_get`, `il2cpp_class_from_name`, `il2cpp_class_get_method_from_name`, …) instead of hard-coded offsets → survives minor game updates.
 - Floating menu in Java (own minimal implementation, no GPL templates), talking to the native lib via JNI.
 - Injection for personal use: decompile APK (apktool), add our `.so` + a small loader in the launcher activity, rebuild, sign with a local debug key.
@@ -27,7 +27,7 @@ In-game mod menu (floating button + menu) for *Vampire Crawlers* on Android (Uni
 ## Layout (target)
 ```
 CLAUDE.md, PLAN.md, README.md, LICENSE
-native/        C++ hook library (CMake / ndk-build)
+native/        C++ hook library (CMake), ShadowHook as submodule
 java/          floating menu + loader (smali or compiled dex)
 tools/         build + patch scripts (run on the user's own APK)
 game-files/    (gitignored) user's APK
