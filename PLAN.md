@@ -35,7 +35,8 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Robustness: the game thread waits up to 30 min for `il2cpp_init` (Unity only initializes once the game is visible; with the screen off it took 52 s, the old 60 s limit would have disabled all cheats)
 - [x] One-hit kill: `EnemyModel.ResolveDamage` (returns `DamageResult` = 3 doubles) gets at least enemy health + armor + 1 as damage, so the game's armor/overkill handling still runs. Verified in game
 - [x] Combo never breaks: keeps the developer property `PlayerModel.DebugIsInCombo` set from the Update hook (every card continues the combo; ending the turn still ends it). Verified in game
-- [ ] Menu redesign: modern/minimal, gaming look, cheats in categories, smaller footprint
+- [x] Menu redesign “gothic gaming”: near-black panel with double gold frame, blood red accents, serif headings; fixed compact size (380×240 dp, scrolls); icon sidebar COMBAT / ECONOMY / RUN / SETTINGS (last tab remembered). Code split into `Theme`, `Widgets`, `FloatingMenu`
+- [ ] Own vector icons for the sidebar (font glyphs look different per device)
 - [ ] Cheats: Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL

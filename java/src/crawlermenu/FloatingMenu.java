@@ -3,53 +3,71 @@ package crawlermenu;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.text.Editable;
-import android.text.InputFilter;
-import android.text.InputType;
-import android.text.TextWatcher;
+import android.graphics.drawable.LayerDrawable;
+import android.util.DisplayMetrics;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.Switch;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * A draggable round button on top of the game. Tapping it opens/closes the menu panel, which can be
- * dragged by its title. Views are added to the activity's decor view, so no overlay permission
- * is needed. Built in code because the patched APK has no resources of ours.
+ * The in-game menu: a draggable round button that opens a compact panel with a title bar, an
+ * icon sidebar (Combat, Economy, Run, Settings) and a scrollable page per category.
+ * Views are added to the activity's decor view, so no overlay permission is needed.
+ * Built in code because the patched APK has no resources of ours.
  */
 final class FloatingMenu {
     private static final String BUTTON_TAG = "crawlermenu.button";
 
-    // Blue of the game's main menu buttons.
-    private static final int ACCENT = Color.rgb(0x26, 0x3F, 0xCD);
-
     private static final String PREFS = "crawlermenu";
     private static final String PREF_PANEL_OPACITY = "panel_opacity";
-    private static final int DEFAULT_PANEL_OPACITY = 92;  // percent, was alpha 235
-    private static final int MIN_PANEL_OPACITY = 20;
+    private static final String PREF_LAST_TAB = "last_tab";
     private static final String PREF_COIN_MULTIPLIER = "coin_multiplier";
     private static final String PREF_XP_MULTIPLIER = "xp_multiplier";
-    private static final int DEFAULT_MULTIPLIER = 10;
+    private static final int DEFAULT_PANEL_OPACITY = 92;
+    private static final int MIN_PANEL_OPACITY = 20;
+
+    private static final int PANEL_WIDTH_DP = 380;
+    private static final int PANEL_HEIGHT_DP = 240;
+    private static final int SIDEBAR_WIDTH_DP = 64;
 
     private final Activity activity;
     private final ViewGroup decor;
+    private final Theme theme;
+    private final SharedPreferences prefs;
+    private final Widgets widgets;
+
+    private final List<Tab> tabs = new ArrayList<>();
+    private GradientDrawable panelFill;
     private final LinearLayout panel;
     private final TextView button;
+
+    /** One sidebar entry and its page. */
+    private static final class Tab {
+        final View item;
+        final TextView icon;
+        final TextView caption;
+        final View page;
+
+        Tab(View item, TextView icon, TextView caption, View page) {
+            this.item = item;
+            this.icon = icon;
+            this.caption = caption;
+            this.page = page;
+        }
+    }
 
     static void attach(Activity activity) {
         ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
@@ -61,32 +79,29 @@ final class FloatingMenu {
     private FloatingMenu(Activity activity, ViewGroup decor) {
         this.activity = activity;
         this.decor = decor;
-        this.panel = createPanel();
-        this.button = createButton();
+        this.theme = new Theme(activity);
+        this.prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        this.widgets = new Widgets(activity, theme, prefs);
+
+        panel = createPanel();
+        button = createButton();
         panel.setVisibility(View.GONE);
         decor.addView(panel);
         decor.addView(button);
     }
 
-    private int dp(float value) {
-        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
-                activity.getResources().getDisplayMetrics()));
+    private int dp(float v) {
+        return theme.dp(v);
     }
 
-    private TextView createButton() {
-        TextView b = new TextView(activity);
-        b.setTag(BUTTON_TAG);
-        b.setText("CM");
-        b.setTextColor(Color.WHITE);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setGravity(Gravity.CENTER);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+    // --- Floating button -----------------------------------------------------------------------
 
-        GradientDrawable bg = new GradientDrawable();
-        bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(Color.argb(200, 20, 20, 24));
-        bg.setStroke(dp(2), ACCENT);
-        b.setBackground(bg);
+    private TextView createButton() {
+        TextView b = theme.heading("CM", 14, Theme.TEXT);
+        b.setTag(BUTTON_TAG);
+        b.setGravity(Gravity.CENTER);
+        b.setLetterSpacing(0.05f);
+        b.setBackground(theme.buttonDisc());
 
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(48), dp(48));
         lp.gravity = Gravity.TOP | Gravity.START;
@@ -97,270 +112,198 @@ final class FloatingMenu {
         return b;
     }
 
-    private LinearLayout createPanel() {
-        LinearLayout p = new LinearLayout(activity);
-        p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(dp(20), dp(16), dp(20), dp(16));
-        // Switches are MATCH_PARENT and do not count when the panel sizes itself, so give the
-        // panel a minimum width that fits the longest switch label.
-        p.setMinimumWidth(dp(360));
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(12));
-        bg.setStroke(dp(2), ACCENT);
-        p.setBackground(bg);
-        int opacity = prefs().getInt(PREF_PANEL_OPACITY, DEFAULT_PANEL_OPACITY);
-        setPanelOpacity(bg, opacity);
-
-        // The title is the drag handle for the whole panel.
-        TextView title = new TextView(activity);
-        title.setText("CrawlerMenu");
-        title.setTextColor(Color.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        title.setOnTouchListener(new Dragger(p, null));
-        p.addView(title);
-
-        // Cheats (always off when the game starts)
-        multiplierRow(p, "Coins", NativeBridge.COIN_MULTIPLIER, PREF_COIN_MULTIPLIER);
-        multiplierRow(p, "XP", NativeBridge.XP_MULTIPLIER, PREF_XP_MULTIPLIER);
-        p.addView(featureSwitch("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
-        p.addView(featureSwitch("Godmode", NativeBridge.GODMODE));
-        p.addView(featureSwitch("No mana cost", NativeBridge.NO_MANA_COST));
-        p.addView(featureSwitch("One-hit kill", NativeBridge.ONE_HIT_KILL));
-        p.addView(featureSwitch("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
-        addCoinsRow(p);
-
-        // Background opacity slider (text stays fully readable). Stored across game restarts.
-        TextView opacityLabel = new TextView(activity);
-        opacityLabel.setText(opacityText(opacity));
-        opacityLabel.setTextColor(Color.LTGRAY);
-        opacityLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        p.addView(opacityLabel);
-
-        SeekBar slider = new SeekBar(activity);
-        slider.setMax(100 - MIN_PANEL_OPACITY);
-        slider.setProgress(opacity - MIN_PANEL_OPACITY);
-        slider.setProgressTintList(ColorStateList.valueOf(ACCENT));
-        slider.setThumbTintList(ColorStateList.valueOf(ACCENT));
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar s, int progress, boolean fromUser) {
-                int value = progress + MIN_PANEL_OPACITY;
-                setPanelOpacity(bg, value);
-                opacityLabel.setText(opacityText(value));
-            }
-
-            @Override public void onStartTrackingTouch(SeekBar s) {}
-
-            @Override public void onStopTrackingTouch(SeekBar s) {
-                prefs().edit().putInt(PREF_PANEL_OPACITY, s.getProgress() + MIN_PANEL_OPACITY).apply();
-            }
-        });
-        LinearLayout.LayoutParams sliderLp = new LinearLayout.LayoutParams(dp(220), ViewGroup.LayoutParams.WRAP_CONTENT);
-        sliderLp.bottomMargin = dp(8);
-        p.addView(slider, sliderLp);
-
-        TextView close = new TextView(activity);
-        close.setText("Close");
-        close.setTextColor(ACCENT);
-        close.setTypeface(Typeface.DEFAULT_BOLD);
-        close.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        close.setPadding(0, dp(4), 0, dp(4));
-        close.setOnClickListener(v -> panel.setVisibility(View.GONE));
-        p.addView(close);
-
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.gravity = Gravity.CENTER;
-        p.setLayoutParams(lp);
-        p.setClickable(true);  // taps on the panel must not reach the game
-        return p;
-    }
-
-    /**
-     * "<name> × [factor]  (switch)" — the factor is editable and remembered across restarts
-     * (under {@code prefKey}); the switch is off on every game start like all cheats.
-     */
-    private void multiplierRow(LinearLayout parent, String name, int featureId, String prefKey) {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView label = new TextView(activity);
-        label.setText(name + " ×");
-        label.setTextColor(Color.WHITE);
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        row.addView(label);
-
-        int saved = prefs().getInt(prefKey, DEFAULT_MULTIPLIER);
-        NativeBridge.setValue(featureId, saved);
-
-        EditText factor = new EditText(activity);
-        factor.setInputType(InputType.TYPE_CLASS_NUMBER);
-        factor.setFilters(new InputFilter[] {new InputFilter.LengthFilter(4)});
-        factor.setText(String.valueOf(saved));
-        factor.setTextColor(Color.WHITE);
-        factor.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        factor.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
-        factor.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        factor.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override public void afterTextChanged(Editable s) {
-                int value;
-                try {
-                    value = Integer.parseInt(s.toString().trim());
-                } catch (NumberFormatException e) {
-                    return;  // empty while typing: keep the previous factor
-                }
-                if (value < 1) return;
-                NativeBridge.setValue(featureId, value);
-                prefs().edit().putInt(prefKey, value).apply();
-            }
-        });
-        LinearLayout.LayoutParams factorLp = new LinearLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.WRAP_CONTENT);
-        factorLp.leftMargin = dp(6);
-        row.addView(factor, factorLp);
-
-        Switch toggle = featureSwitch("", featureId);
-        // Weight 1 + MATCH width pushes the switch to the right edge like the other switches.
-        row.addView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        parent.addView(row);
-    }
-
-    /** An on/off switch that turns a native feature on and off. */
-    private Switch featureSwitch(String text, int featureId) {
-        Switch s = new Switch(activity);
-        s.setText(text);
-        s.setTextColor(Color.WHITE);
-        s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        s.setPadding(0, dp(8), 0, dp(12));
-        // The game's activity uses the old Holo theme (square switch with ON/OFF text), so draw our own.
-        s.setShowText(false);
-        s.setSwitchMinWidth(dp(44));
-        GradientDrawable thumb = new GradientDrawable();
-        thumb.setShape(GradientDrawable.OVAL);
-        thumb.setSize(dp(22), dp(22));
-        thumb.setColor(Color.WHITE);
-        GradientDrawable track = new GradientDrawable();
-        track.setCornerRadius(dp(11));
-        track.setSize(dp(44), dp(22));
-        track.setColor(Color.WHITE);
-        s.setThumbDrawable(thumb);
-        s.setTrackDrawable(track);
-        int[][] states = {{android.R.attr.state_checked}, {}};
-        s.setThumbTintList(new ColorStateList(states, new int[] {Color.WHITE, Color.LTGRAY}));
-        s.setTrackTintList(new ColorStateList(states, new int[] {ACCENT, Color.DKGRAY}));
-        s.setOnCheckedChangeListener((button, checked) -> NativeBridge.set(featureId, checked));
-        return s;
-    }
-
-    /** "Coins [ amount ] [Add]" plus a status line below it. */
-    private void addCoinsRow(LinearLayout parent) {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView label = new TextView(activity);
-        label.setText("Coins");
-        label.setTextColor(Color.WHITE);
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        row.addView(label);
-
-        EditText amount = new EditText(activity);
-        amount.setInputType(InputType.TYPE_CLASS_NUMBER);
-        amount.setFilters(new InputFilter[] {new InputFilter.LengthFilter(9)});
-        amount.setHint("amount");
-        amount.setHintTextColor(Color.GRAY);
-        amount.setTextColor(Color.WHITE);
-        amount.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        amount.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
-        amount.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        LinearLayout.LayoutParams amountLp = new LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT);
-        amountLp.leftMargin = dp(12);
-        amountLp.rightMargin = dp(8);
-        row.addView(amount, amountLp);
-
-        TextView add = new TextView(activity);
-        add.setText("Add");
-        add.setTextColor(Color.WHITE);
-        add.setTypeface(Typeface.DEFAULT_BOLD);
-        add.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        add.setPadding(dp(14), dp(6), dp(14), dp(6));
-        add.setSingleLine(true);
-        add.setGravity(Gravity.CENTER);
-        GradientDrawable addBg = new GradientDrawable();
-        addBg.setCornerRadius(dp(6));
-        addBg.setColor(ACCENT);
-        add.setBackground(addBg);
-        row.addView(add, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
-        // WRAP_CONTENT on purpose: a vertical LinearLayout ignores MATCH_PARENT children (its
-        // default) when sizing itself, which squeezed this row to the slider's width.
-        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rowLp.bottomMargin = dp(8);
-        parent.addView(row, rowLp);
-
-        // Hidden until there is a message, so it doesn't leave an empty gap.
-        TextView status = new TextView(activity);
-        status.setTextColor(Color.LTGRAY);
-        status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        status.setPadding(0, dp(2), 0, dp(6));
-        status.setVisibility(View.GONE);
-        parent.addView(status);
-
-        add.setOnClickListener(v -> {
-            hideKeyboard(amount);
-            status.setVisibility(View.VISIBLE);
-            int value;
-            try {
-                value = Integer.parseInt(amount.getText().toString().trim());
-            } catch (NumberFormatException e) {
-                status.setText("Enter a number first.");
-                return;
-            }
-            if (value <= 0) {
-                status.setText("Enter a number above 0.");
-                return;
-            }
-            switch (NativeBridge.queueCoins(value)) {
-                case NativeBridge.ADDED_RUN:
-                    status.setText("Added " + value + " coins (run).");
-                    break;
-                case NativeBridge.ADDED_VILLAGE:
-                    status.setText("Added " + value + " coins (village).");
-                    break;
-                default:
-                    status.setText("Not available right now.");
-                    break;
-            }
-        });
-    }
-
-    private void hideKeyboard(View view) {
-        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        view.clearFocus();
-    }
-
-    private SharedPreferences prefs() {
-        return activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-    }
-
-    /** Sets the panel background's fill alpha; {@code percent} is 0..100. */
-    private static void setPanelOpacity(GradientDrawable bg, int percent) {
-        bg.setColor(Color.argb(Math.round(percent * 2.55f), 20, 20, 24));
-    }
-
-    private static String opacityText(int percent) {
-        return "Background opacity: " + percent + "%";
-    }
-
     private void togglePanel() {
         panel.setVisibility(panel.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
         button.bringToFront();
     }
+
+    // --- Panel ---------------------------------------------------------------------------------
+
+    private LinearLayout createPanel() {
+        LinearLayout p = new LinearLayout(activity);
+        p.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable[] fill = new GradientDrawable[1];
+        p.setBackground(theme.panelFrame(fill));
+        panelFill = fill[0];
+        setPanelOpacity(prefs.getInt(PREF_PANEL_OPACITY, DEFAULT_PANEL_OPACITY));
+        int inset = dp(5);  // keep content inside the double gold frame
+        p.setPadding(inset, inset, inset, inset);
+        p.setClickable(true);  // taps on the panel must not reach the game
+
+        p.addView(createTitleBar(p));
+        p.addView(line(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        LinearLayout body = new LinearLayout(activity);
+        body.setOrientation(LinearLayout.HORIZONTAL);
+
+        LinearLayout pages = new LinearLayout(activity);
+        pages.setOrientation(LinearLayout.VERTICAL);
+        pages.setPadding(dp(14), dp(8), dp(14), dp(8));
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(pages);
+
+        body.addView(createSidebar(pages));
+        body.addView(line(1, ViewGroup.LayoutParams.MATCH_PARENT));
+        body.addView(scroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        p.addView(body, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        selectTab(Math.max(0, Math.min(prefs.getInt(PREF_LAST_TAB, 0), tabs.size() - 1)));
+
+        // Fixed compact size, but never larger than the screen.
+        DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+        int width = Math.min(dp(PANEL_WIDTH_DP), Math.round(dm.widthPixels * 0.9f));
+        int height = Math.min(dp(PANEL_HEIGHT_DP), Math.round(dm.heightPixels * 0.85f));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, height);
+        lp.gravity = Gravity.CENTER;
+        p.setLayoutParams(lp);
+        return p;
+    }
+
+    /** "CRAWLER MENU ............ ✕" — also the drag handle for the panel. */
+    private View createTitleBar(LinearLayout panelView) {
+        LinearLayout bar = new LinearLayout(activity);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12), dp(6), dp(6), dp(6));
+
+        TextView title = theme.heading("Crawler Menu", 13, Theme.GOLD);
+        bar.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView close = theme.body("✕", 15, Theme.TEXT_MUTED);
+        close.setPadding(dp(10), dp(2), dp(8), dp(2));
+        close.setOnClickListener(v -> panelView.setVisibility(View.GONE));
+        bar.addView(close);
+
+        bar.setOnTouchListener(new Dragger(panelView, null));
+        return bar;
+    }
+
+    private View line(int width, int height) {
+        View v = new View(activity);
+        v.setBackground(theme.divider());
+        v.setLayoutParams(new LinearLayout.LayoutParams(width, height));
+        return v;
+    }
+
+    // --- Sidebar and pages ---------------------------------------------------------------------
+
+    private View createSidebar(LinearLayout pages) {
+        LinearLayout side = new LinearLayout(activity);
+        side.setOrientation(LinearLayout.VERTICAL);
+        side.setBackgroundColor(Color.argb(120, Color.red(Theme.SIDEBAR), Color.green(Theme.SIDEBAR),
+                Color.blue(Theme.SIDEBAR)));
+        side.setLayoutParams(new LinearLayout.LayoutParams(dp(SIDEBAR_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // ︎ asks for the plain text glyph instead of a colored emoji.
+        addTab(side, pages, "⚔︎", "Combat", combatPage());
+        addTab(side, pages, "¤", "Economy", economyPage());
+        addTab(side, pages, "☠︎", "Run", runPage());
+        side.addView(new View(activity), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        addTab(side, pages, "⚙︎", "Settings", settingsPage());
+        return side;
+    }
+
+    private void addTab(LinearLayout side, LinearLayout pages, String glyph, String name, View page) {
+        LinearLayout item = new LinearLayout(activity);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER);
+        item.setPadding(0, dp(7), 0, dp(7));
+
+        TextView icon = theme.body(glyph, 18, Theme.TEXT_MUTED);
+        icon.setGravity(Gravity.CENTER);
+        item.addView(icon);
+        TextView caption = theme.heading(name, 7.5f, Theme.TEXT_MUTED);
+        caption.setGravity(Gravity.CENTER);
+        caption.setLetterSpacing(0.08f);
+        item.addView(caption);
+
+        side.addView(item, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        page.setVisibility(View.GONE);
+        pages.addView(page);
+
+        int index = tabs.size();
+        tabs.add(new Tab(item, icon, caption, page));
+        item.setOnClickListener(v -> selectTab(index));
+    }
+
+    private void selectTab(int index) {
+        for (int i = 0; i < tabs.size(); i++) {
+            Tab t = tabs.get(i);
+            boolean active = i == index;
+            t.page.setVisibility(active ? View.VISIBLE : View.GONE);
+            t.item.setBackground(active ? activeTabBackground() : null);
+            t.icon.setTextColor(active ? Theme.GOLD : Theme.TEXT_MUTED);
+            t.caption.setTextColor(active ? Theme.TEXT : Theme.TEXT_MUTED);
+        }
+        prefs.edit().putInt(PREF_LAST_TAB, index).apply();
+    }
+
+    /** Dark red tint with a blood red bar on the left edge. */
+    private Drawable activeTabBackground() {
+        GradientDrawable tint = new GradientDrawable();
+        tint.setColor(Color.argb(150, Color.red(Theme.BLOOD_DARK), Color.green(Theme.BLOOD_DARK),
+                Color.blue(Theme.BLOOD_DARK)));
+        GradientDrawable bar = new GradientDrawable();
+        bar.setColor(Theme.BLOOD);
+        LayerDrawable bg = new LayerDrawable(new Drawable[] {tint, bar});
+        bg.setLayerInset(1, 0, 0, dp(SIDEBAR_WIDTH_DP) - dp(3), 0);
+        return bg;
+    }
+
+    /** Page container with a "— TITLE —" header. */
+    private LinearLayout page(String title) {
+        LinearLayout p = new LinearLayout(activity);
+        p.setOrientation(LinearLayout.VERTICAL);
+        TextView header = theme.heading("— " + title + " —", 12, Theme.GOLD);
+        header.setPadding(0, 0, 0, dp(4));
+        p.addView(header);
+        return p;
+    }
+
+    private View combatPage() {
+        LinearLayout p = page("Combat");
+        p.addView(widgets.switchRow("Godmode", NativeBridge.GODMODE));
+        p.addView(widgets.switchRow("One-hit kill", NativeBridge.ONE_HIT_KILL));
+        p.addView(widgets.switchRow("No mana cost", NativeBridge.NO_MANA_COST));
+        return p;
+    }
+
+    private View economyPage() {
+        LinearLayout p = page("Economy");
+        p.addView(widgets.multiplierRow("Coins", NativeBridge.COIN_MULTIPLIER, PREF_COIN_MULTIPLIER));
+        p.addView(widgets.multiplierRow("XP", NativeBridge.XP_MULTIPLIER, PREF_XP_MULTIPLIER));
+        p.addView(widgets.addCoinsRow());
+        return p;
+    }
+
+    private View runPage() {
+        LinearLayout p = page("Run");
+        p.addView(widgets.switchRow("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
+        p.addView(widgets.switchRow("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
+        return p;
+    }
+
+    private View settingsPage() {
+        LinearLayout p = page("Settings");
+        int opacity = prefs.getInt(PREF_PANEL_OPACITY, DEFAULT_PANEL_OPACITY);
+        p.addView(widgets.percentSlider("Background opacity", MIN_PANEL_OPACITY, 100, opacity,
+                this::setPanelOpacity, value -> prefs.edit().putInt(PREF_PANEL_OPACITY, value).apply()));
+        TextView note = theme.body("Cheats are off every time the game starts.", 12, Theme.TEXT_MUTED);
+        note.setPadding(0, dp(6), 0, 0);
+        p.addView(note);
+        return p;
+    }
+
+    /** Sets the panel background's fill alpha; {@code percent} is 0..100. Text stays opaque. */
+    private void setPanelOpacity(int percent) {
+        if (panelFill == null) return;
+        panelFill.setColor(Color.argb(Math.round(percent * 2.55f), Color.red(Theme.BACKGROUND),
+                Color.green(Theme.BACKGROUND), Color.blue(Theme.BACKGROUND)));
+    }
+
+    // --- Dragging ------------------------------------------------------------------------------
 
     /**
      * Touch handler that drags {@code target} around the screen. A short tap without movement
