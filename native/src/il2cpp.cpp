@@ -126,7 +126,8 @@ void detach() {
     t_thread = nullptr;
 }
 
-void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc) {
+void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc,
+                  const void** method_info) {
     const Image* image = find_image(assembly);
     if (image == nullptr) {
         LOGE("il2cpp: assembly %s not found", assembly);
@@ -142,6 +143,7 @@ void* find_method(const char* assembly, const char* name_space, const char* klas
         LOGE("il2cpp: method %s.%s::%s(%d args) not found", name_space, klass, method, argc);
         return nullptr;
     }
+    if (method_info != nullptr) *method_info = info;
     return *reinterpret_cast<void* const*>(info);
 }
 

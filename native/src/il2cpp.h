@@ -17,8 +17,10 @@ bool wait_until_ready(const char* assembly, int timeout_ms);
 void detach();
 
 // Returns the native code address of a managed method, or nullptr if not found.
-// `argc` is the number of parameters (-1 = any overload).
-void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc);
+// `argc` is the number of parameters (-1 = any overload). If `method_info` is given, it receives
+// the IL2CPP MethodInfo*, which compiled methods expect as their hidden last argument.
+void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc,
+                  const void** method_info = nullptr);
 
 // Load address of libil2cpp.so (for logging offsets that can be compared with a dump).
 uintptr_t base();

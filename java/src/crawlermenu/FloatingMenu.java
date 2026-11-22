@@ -7,6 +7,8 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.text.InputFilter;
+import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -14,6 +16,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -110,6 +115,7 @@ final class FloatingMenu {
 
         // Cheats (always off when the game starts)
         p.addView(featureSwitch("Coins ×10", NativeBridge.COIN_MULTIPLIER));
+        addCoinsRow(p);
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.
         TextView opacityLabel = new TextView(activity);
@@ -164,11 +170,112 @@ final class FloatingMenu {
         s.setTextColor(Color.WHITE);
         s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         s.setPadding(0, dp(8), 0, dp(12));
+        // The game's activity uses the old Holo theme (square switch with ON/OFF text), so draw our own.
+        s.setShowText(false);
+        s.setSwitchMinWidth(dp(44));
+        GradientDrawable thumb = new GradientDrawable();
+        thumb.setShape(GradientDrawable.OVAL);
+        thumb.setSize(dp(22), dp(22));
+        thumb.setColor(Color.WHITE);
+        GradientDrawable track = new GradientDrawable();
+        track.setCornerRadius(dp(11));
+        track.setSize(dp(44), dp(22));
+        track.setColor(Color.WHITE);
+        s.setThumbDrawable(thumb);
+        s.setTrackDrawable(track);
         int[][] states = {{android.R.attr.state_checked}, {}};
-        s.setThumbTintList(new ColorStateList(states, new int[] {ACCENT, Color.LTGRAY}));
-        s.setTrackTintList(new ColorStateList(states, new int[] {ACCENT, Color.GRAY}));
+        s.setThumbTintList(new ColorStateList(states, new int[] {Color.WHITE, Color.LTGRAY}));
+        s.setTrackTintList(new ColorStateList(states, new int[] {ACCENT, Color.DKGRAY}));
         s.setOnCheckedChangeListener((button, checked) -> NativeBridge.set(featureId, checked));
         return s;
+    }
+
+    /** "Coins [ amount ] [Add]" plus a status line below it. */
+    private void addCoinsRow(LinearLayout parent) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView label = new TextView(activity);
+        label.setText("Coins");
+        label.setTextColor(Color.WHITE);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        row.addView(label);
+
+        EditText amount = new EditText(activity);
+        amount.setInputType(InputType.TYPE_CLASS_NUMBER);
+        amount.setFilters(new InputFilter[] {new InputFilter.LengthFilter(9)});
+        amount.setHint("amount");
+        amount.setHintTextColor(Color.GRAY);
+        amount.setTextColor(Color.WHITE);
+        amount.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        amount.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
+        amount.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        LinearLayout.LayoutParams amountLp = new LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT);
+        amountLp.leftMargin = dp(12);
+        amountLp.rightMargin = dp(8);
+        row.addView(amount, amountLp);
+
+        TextView add = new TextView(activity);
+        add.setText("Add");
+        add.setTextColor(Color.WHITE);
+        add.setTypeface(Typeface.DEFAULT_BOLD);
+        add.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        add.setPadding(dp(14), dp(6), dp(14), dp(6));
+        add.setSingleLine(true);
+        add.setGravity(Gravity.CENTER);
+        GradientDrawable addBg = new GradientDrawable();
+        addBg.setCornerRadius(dp(6));
+        addBg.setColor(ACCENT);
+        add.setBackground(addBg);
+        row.addView(add, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
+        // WRAP_CONTENT on purpose: a vertical LinearLayout ignores MATCH_PARENT children (its
+        // default) when sizing itself, which squeezed this row to the slider's width.
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowLp.bottomMargin = dp(8);
+        parent.addView(row, rowLp);
+
+        // Hidden until there is a message, so it doesn't leave an empty gap.
+        TextView status = new TextView(activity);
+        status.setTextColor(Color.LTGRAY);
+        status.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        status.setPadding(0, dp(2), 0, dp(6));
+        status.setVisibility(View.GONE);
+        parent.addView(status);
+
+        add.setOnClickListener(v -> {
+            hideKeyboard(amount);
+            status.setVisibility(View.VISIBLE);
+            int value;
+            try {
+                value = Integer.parseInt(amount.getText().toString().trim());
+            } catch (NumberFormatException e) {
+                status.setText("Enter a number first.");
+                return;
+            }
+            if (value <= 0) {
+                status.setText("Enter a number above 0.");
+                return;
+            }
+            switch (NativeBridge.queueCoins(value)) {
+                case NativeBridge.ADDED_RUN:
+                    status.setText("Added " + value + " coins (run).");
+                    break;
+                case NativeBridge.ADDED_VILLAGE:
+                    status.setText("Added " + value + " coins (village).");
+                    break;
+                default:
+                    status.setText("Not available right now.");
+                    break;
+            }
+        });
+    }
+
+    private void hideKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        view.clearFocus();
     }
 
     private SharedPreferences prefs() {
