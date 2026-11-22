@@ -25,16 +25,20 @@ void hook_add_coins(void* self, int coins, bool use_greed, const void* method) {
     SHADOWHOOK_STACK_SCOPE();
     int amount = coins;
     // Only gains are multiplied; the game also calls AddCoins(0) all the time.
-    if (coins > 0 && features::is_enabled(features::kCoinMultiplier)) {
-        amount = coins * features::kCoinMultiplierFactor;
-        LOGI("AddCoins: %d -> %d (coin multiplier)", coins, amount);
+    const int factor = features::value(features::kCoinMultiplier);
+    if (coins > 0 && factor > 1 && features::is_enabled(features::kCoinMultiplier)) {
+        const int64_t multiplied = static_cast<int64_t>(coins) * factor;
+        amount = multiplied > INT32_MAX ? INT32_MAX : static_cast<int>(multiplied);
+        LOGI("AddCoins: %d -> %d (coin multiplier x%d)", coins, amount, factor);
     }
     SHADOWHOOK_CALL_PREV(hook_add_coins, self, amount, use_greed, method);
 }
 
-// --- Infinite rerolls / skips / banishes ---------------------------------------------------
-// The live counters are SimpleStat objects in PlayerStats (fields Rerolls, CardSkips, Banishes).
-// While the feature is on, any decrease of exactly these three stats is dropped.
+// --- Protected player stats: infinite rerolls/skips/banishes, godmode ----------------------
+// The live values are SimpleStat objects in PlayerStats (fields Rerolls, CardSkips, Banishes,
+// Health). While the matching feature is on, any decrease of that stat is dropped; increases
+// (level-ups, healing) pass through. Damage itself is still calculated by the game (it lowers
+// Health point by point afterwards), so on-hit effects keep working.
 using GetPlayerStatsFn = void* (*)(void* player, const void* method);
 using StatAddValueFn = float (*)(void* stat, float value, bool notify, const void* method);
 using StatSetValueFn = void (*)(void* stat, float value, bool notify, const void* method);
@@ -51,31 +55,38 @@ const void* g_stat_set_value_method = nullptr;
 int g_off_rerolls = -1;
 int g_off_skips = -1;
 int g_off_banishes = -1;
+int g_off_health = -1;
 
-// The three stat objects of the current player, refreshed every frame by PlayerModel.Update.
+// The stat objects of the current player, refreshed every frame by PlayerModel.Update.
 std::atomic<void*> g_stat_rerolls{nullptr};
 std::atomic<void*> g_stat_skips{nullptr};
 std::atomic<void*> g_stat_banishes{nullptr};
-
-bool is_protected_stat(void* stat) {
-    return stat != nullptr && (stat == g_stat_rerolls.load(std::memory_order_relaxed) ||
-                               stat == g_stat_skips.load(std::memory_order_relaxed) ||
-                               stat == g_stat_banishes.load(std::memory_order_relaxed));
-}
+std::atomic<void*> g_stat_health{nullptr};
 
 bool infinite_choices_on() { return features::is_enabled(features::kInfiniteChoices); }
+bool godmode_on() { return features::is_enabled(features::kGodmode); }
+
+bool is_protected_stat(void* stat) {
+    if (stat == nullptr) return false;
+    if (infinite_choices_on() && (stat == g_stat_rerolls.load(std::memory_order_relaxed) ||
+                                  stat == g_stat_skips.load(std::memory_order_relaxed) ||
+                                  stat == g_stat_banishes.load(std::memory_order_relaxed))) {
+        return true;
+    }
+    return godmode_on() && stat == g_stat_health.load(std::memory_order_relaxed);
+}
 
 float hook_stat_add_value(void* stat, float value, bool notify, const void* method) {
     SHADOWHOOK_STACK_SCOPE();
-    if (value < 0 && infinite_choices_on() && is_protected_stat(stat)) {
-        return g_stat_get_value(stat, g_stat_get_value_method);  // keep the counter as it is
+    if (value < 0 && is_protected_stat(stat)) {
+        return g_stat_get_value(stat, g_stat_get_value_method);  // keep the value as it is
     }
     return SHADOWHOOK_CALL_PREV(hook_stat_add_value, stat, value, notify, method);
 }
 
 void hook_stat_set_value(void* stat, float value, bool notify, const void* method) {
     SHADOWHOOK_STACK_SCOPE();
-    if (infinite_choices_on() && is_protected_stat(stat) && value < g_stat_get_value(stat, g_stat_get_value_method)) {
+    if (is_protected_stat(stat) && value < g_stat_get_value(stat, g_stat_get_value_method)) {
         return;  // drop decreases
     }
     SHADOWHOOK_CALL_PREV(hook_stat_set_value, stat, value, notify, method);
@@ -85,11 +96,11 @@ void* read_ref(void* object, int offset) {
     return offset < 0 ? nullptr : *reinterpret_cast<void**>(static_cast<char*>(object) + offset);
 }
 
-bool g_choice_hooks_ready = false;  // set once all of the above is resolved and hooked
+bool g_stat_hooks_ready = false;  // set once all of the above is resolved and hooked
 
 // Called every frame from PlayerModel.Update.
-void refresh_choice_stats(void* player) {
-    if (!g_choice_hooks_ready) return;
+void refresh_player_stats(void* player) {
+    if (!g_stat_hooks_ready) return;
     void* stats = g_get_player_stats(player, g_get_player_stats_method);
     if (stats == nullptr) return;
     void* rerolls = read_ref(stats, g_off_rerolls);
@@ -98,6 +109,7 @@ void refresh_choice_stats(void* player) {
     g_stat_rerolls.store(rerolls, std::memory_order_relaxed);
     g_stat_skips.store(skips, std::memory_order_relaxed);
     g_stat_banishes.store(banishes, std::memory_order_relaxed);
+    g_stat_health.store(read_ref(stats, g_off_health), std::memory_order_relaxed);
 
     // A counter at 0 would leave the game's buttons disabled, so keep at least 1.
     if (!infinite_choices_on()) return;
@@ -117,7 +129,7 @@ void hook_player_update(void* self, const void* method) {
     SHADOWHOOK_STACK_SCOPE();
     SHADOWHOOK_CALL_PREV(hook_player_update, self, method);
     features::mark_player_active();
-    refresh_choice_stats(self);
+    refresh_player_stats(self);
 
     const int coins = features::take_queued_coins();
     if (coins > 0 && g_orig_add_coins != nullptr) {
@@ -165,7 +177,7 @@ bool hook(const char* name, void* target, void* proxy, void** orig) {
     return true;
 }
 
-void install_infinite_choices() {
+void install_stat_protection() {
     constexpr const char* kLogicNs = "Nosebleed.Pancake.GameLogic";
     g_get_player_stats = reinterpret_cast<GetPlayerStatsFn>(il2cpp::find_method(
         kGameAssembly, kModelsNs, "PlayerModel", "get_PlayerStats", 0, &g_get_player_stats_method));
@@ -177,20 +189,21 @@ void install_infinite_choices() {
     g_off_rerolls = il2cpp::field_offset(kGameAssembly, kLogicNs, "PlayerStats", "Rerolls");
     g_off_skips = il2cpp::field_offset(kGameAssembly, kLogicNs, "PlayerStats", "CardSkips");
     g_off_banishes = il2cpp::field_offset(kGameAssembly, kLogicNs, "PlayerStats", "Banishes");
+    g_off_health = il2cpp::field_offset(kGameAssembly, kLogicNs, "PlayerStats", "Health");
 
     if (g_get_player_stats == nullptr || g_stat_get_value == nullptr || g_off_rerolls < 0 || g_off_skips < 0 ||
-        g_off_banishes < 0) {
-        LOGE("Infinite choices unavailable: game methods/fields not found");
+        g_off_banishes < 0 || g_off_health < 0) {
+        LOGE("Stat protection unavailable: game methods/fields not found");
         return;
     }
-    // Both hooks are needed; if only one were active, the counters could still go down.
+    // Both hooks are needed; if only one were active, protected stats could still go down.
     if (hook("SimpleStat.AddValue", add_value, reinterpret_cast<void*>(hook_stat_add_value),
              reinterpret_cast<void**>(&g_orig_stat_add_value)) &&
         hook("SimpleStat.SetValue", set_value, reinterpret_cast<void*>(hook_stat_set_value),
              reinterpret_cast<void**>(&g_orig_stat_set_value))) {
-        g_choice_hooks_ready = true;
-        LOGI("Infinite choices ready (offsets rerolls=0x%x skips=0x%x banishes=0x%x)", g_off_rerolls, g_off_skips,
-             g_off_banishes);
+        g_stat_hooks_ready = true;
+        LOGI("Stat protection ready (offsets rerolls=0x%x skips=0x%x banishes=0x%x health=0x%x)", g_off_rerolls,
+             g_off_skips, g_off_banishes, g_off_health);
     }
 }
 
@@ -221,5 +234,6 @@ void install_game_hooks() {
         features::set_village_gold_available(true);
     }
 
-    install_infinite_choices();
+    install_stat_protection();
+
 }

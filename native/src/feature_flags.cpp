@@ -13,6 +13,7 @@ namespace {
 
 constexpr int kMaxId = 64;
 std::atomic<bool> g_enabled[kMaxId];
+std::atomic<int> g_values[kMaxId];
 
 std::atomic<int64_t> g_last_player_update_ms{0};
 std::atomic<int> g_queued_coins{0};
@@ -49,6 +50,17 @@ void set_enabled(int id, bool enabled) {
 
 bool is_enabled(int id) { return valid(id) && g_enabled[id].load(std::memory_order_relaxed); }
 
+void set_value(int id, int value) {
+    if (!valid(id)) {
+        LOGW("Unknown feature id %d", id);
+        return;
+    }
+    g_values[id].store(value, std::memory_order_relaxed);
+    LOGI("Feature %d value = %d", id, value);
+}
+
+int value(int id) { return valid(id) ? g_values[id].load(std::memory_order_relaxed) : 0; }
+
 void mark_player_active() { g_last_player_update_ms.store(now_ms(), std::memory_order_relaxed); }
 
 bool player_active() { return now_ms() - g_last_player_update_ms.load(std::memory_order_relaxed) < 1000; }
@@ -72,6 +84,11 @@ int take_queued_village_gold() { return g_queued_village_gold.exchange(0); }
 extern "C" JNIEXPORT void JNICALL Java_crawlermenu_NativeBridge_setFeature(JNIEnv*, jclass, jint id,
                                                                           jboolean enabled) {
     features::set_enabled(id, enabled == JNI_TRUE);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_crawlermenu_NativeBridge_setFeatureValue(JNIEnv*, jclass, jint id,
+                                                                               jint value) {
+    features::set_value(id, value);
 }
 
 // Queues coins for the next game frame: run coins during a run, village gold otherwise.

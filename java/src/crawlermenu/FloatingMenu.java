@@ -7,8 +7,10 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -40,6 +42,8 @@ final class FloatingMenu {
     private static final String PREF_PANEL_OPACITY = "panel_opacity";
     private static final int DEFAULT_PANEL_OPACITY = 92;  // percent, was alpha 235
     private static final int MIN_PANEL_OPACITY = 20;
+    private static final String PREF_COIN_MULTIPLIER = "coin_multiplier";
+    private static final int DEFAULT_COIN_MULTIPLIER = 10;
 
     private final Activity activity;
     private final ViewGroup decor;
@@ -117,8 +121,9 @@ final class FloatingMenu {
         p.addView(title);
 
         // Cheats (always off when the game starts)
-        p.addView(featureSwitch("Coins ×10", NativeBridge.COIN_MULTIPLIER));
+        coinMultiplierRow(p);
         p.addView(featureSwitch("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
+        p.addView(featureSwitch("Godmode", NativeBridge.GODMODE));
         addCoinsRow(p);
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.
@@ -165,6 +170,55 @@ final class FloatingMenu {
         p.setLayoutParams(lp);
         p.setClickable(true);  // taps on the panel must not reach the game
         return p;
+    }
+
+    /** "Coins × [factor]  (switch)" — the factor is editable and remembered across restarts. */
+    private void coinMultiplierRow(LinearLayout parent) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView label = new TextView(activity);
+        label.setText("Coins ×");
+        label.setTextColor(Color.WHITE);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        row.addView(label);
+
+        int saved = prefs().getInt(PREF_COIN_MULTIPLIER, DEFAULT_COIN_MULTIPLIER);
+        NativeBridge.setValue(NativeBridge.COIN_MULTIPLIER, saved);
+
+        EditText factor = new EditText(activity);
+        factor.setInputType(InputType.TYPE_CLASS_NUMBER);
+        factor.setFilters(new InputFilter[] {new InputFilter.LengthFilter(4)});
+        factor.setText(String.valueOf(saved));
+        factor.setTextColor(Color.WHITE);
+        factor.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        factor.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
+        factor.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        factor.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override public void afterTextChanged(Editable s) {
+                int value;
+                try {
+                    value = Integer.parseInt(s.toString().trim());
+                } catch (NumberFormatException e) {
+                    return;  // empty while typing: keep the previous factor
+                }
+                if (value < 1) return;
+                NativeBridge.setValue(NativeBridge.COIN_MULTIPLIER, value);
+                prefs().edit().putInt(PREF_COIN_MULTIPLIER, value).apply();
+            }
+        });
+        LinearLayout.LayoutParams factorLp = new LinearLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.WRAP_CONTENT);
+        factorLp.leftMargin = dp(6);
+        row.addView(factor, factorLp);
+
+        Switch toggle = featureSwitch("", NativeBridge.COIN_MULTIPLIER);
+        // Weight 1 + MATCH width pushes the switch to the right edge like the other switches.
+        row.addView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        parent.addView(row);
     }
 
     /** An on/off switch that turns a native feature on and off. */

@@ -7,10 +7,22 @@ final class NativeBridge {
     // Must match features::Id in native/src/feature_flags.h
     static final int COIN_MULTIPLIER = 1;
     static final int INFINITE_CHOICES = 2;
+    static final int GODMODE = 3;
 
     private NativeBridge() {}
 
     private static native void setFeature(int id, boolean enabled);
+
+    private static native void setFeatureValue(int id, int value);
+
+    /** Sets a feature's numeric setting (e.g. the coin multiplier). Never throws. */
+    static void setValue(int id, int value) {
+        try {
+            setFeatureValue(id, value);
+        } catch (Throwable t) {
+            Log.e(Loader.TAG, "setFeatureValue(" + id + ") failed", t);
+        }
+    }
 
     // Results of queueCoins(), must match Java_crawlermenu_NativeBridge_addCoins
     static final int ADDED_NONE = 0;

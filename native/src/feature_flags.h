@@ -8,14 +8,17 @@
 namespace features {
 
 enum Id : int {
-    kCoinMultiplier = 1,   // coin pickups give 10x
+    kCoinMultiplier = 1,   // coin pickups are multiplied by the feature's value
     kInfiniteChoices = 2,  // rerolls, skips and banishes never go down
+    kGodmode = 3,          // player health never goes down
 };
-
-constexpr int kCoinMultiplierFactor = 10;
 
 void set_enabled(int id, bool enabled);
 bool is_enabled(int id);
+
+// Optional numeric setting per feature (e.g. the coin multiplier). Defaults to 0.
+void set_value(int id, int value);
+int value(int id);
 
 // --- Player presence: is a run active? ---
 // Called by the PlayerModel.Update hook every frame.
