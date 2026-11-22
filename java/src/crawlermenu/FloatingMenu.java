@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 
 /**
@@ -107,12 +108,8 @@ final class FloatingMenu {
         title.setOnTouchListener(new Dragger(p, null));
         p.addView(title);
 
-        TextView info = new TextView(activity);
-        info.setText("No features yet.");
-        info.setTextColor(Color.LTGRAY);
-        info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        info.setPadding(0, dp(8), 0, dp(12));
-        p.addView(info);
+        // Cheats (always off when the game starts)
+        p.addView(featureSwitch("Coins ×10", NativeBridge.COIN_MULTIPLIER));
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.
         TextView opacityLabel = new TextView(activity);
@@ -158,6 +155,20 @@ final class FloatingMenu {
         p.setLayoutParams(lp);
         p.setClickable(true);  // taps on the panel must not reach the game
         return p;
+    }
+
+    /** An on/off switch that turns a native feature on and off. */
+    private Switch featureSwitch(String text, int featureId) {
+        Switch s = new Switch(activity);
+        s.setText(text);
+        s.setTextColor(Color.WHITE);
+        s.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        s.setPadding(0, dp(8), 0, dp(12));
+        int[][] states = {{android.R.attr.state_checked}, {}};
+        s.setThumbTintList(new ColorStateList(states, new int[] {ACCENT, Color.LTGRAY}));
+        s.setTrackTintList(new ColorStateList(states, new int[] {ACCENT, Color.GRAY}));
+        s.setOnCheckedChangeListener((button, checked) -> NativeBridge.set(featureId, checked));
+        return s;
     }
 
     private SharedPreferences prefs() {

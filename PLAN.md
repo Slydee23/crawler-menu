@@ -26,7 +26,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 ## Phase 3 — Menu
 - [x] Floating button + empty menu panel (Java, `java/src/crawlermenu/`), added to the activity decor view; started from a smali patch in `Application.attachBaseContext`, shipped as an extra `classesN.dex` (`tools/build-java.ps1`)
 - [x] Panel draggable by its title, accent color = blue of the game's menu buttons (#263FCD), background opacity slider (20-100 %, saved in SharedPreferences)
-- [ ] JNI bridge to native toggles/values
+- [x] JNI bridge: `crawlermenu.NativeBridge.setFeature(id, on)` → `native/src/feature_flags.*`; first switch “Coins ×10” (verified 1465 → 1475 for one coin). Cheats are off on every game start
 - [ ] Cheats: Infinite rerolls · Combo never breaks · Godmode · No mana cost · One-hit kill · XP multiplier · Edit money · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL
