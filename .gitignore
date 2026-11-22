@@ -1,0 +1,21 @@
+# Game files, dumps and builds — never commit (see CLAUDE.md)
+game-files/
+dump/
+build/
+*.apk
+*.apks
+*.xapk
+*.so
+*.dat
+*.keystore
+*.jks
+
+# Tooling
+.gradle/
+.cxx/
+local.properties
+node_modules/
+.vscode/
+.claude/settings.local.json
+Thumbs.db
+.DS_Store
