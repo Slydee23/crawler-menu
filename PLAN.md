@@ -37,7 +37,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Combo never breaks: keeps the developer property `PlayerModel.DebugIsInCombo` set from the Update hook (every card continues the combo; ending the turn still ends it). Verified in game
 - [x] Menu redesign “gothic gaming”: near-black panel with double gold frame, blood red accents, serif headings; fixed compact size (380×240 dp, scrolls); icon sidebar COMBAT / ECONOMY / RUN / SETTINGS (last tab remembered). Code split into `Theme`, `Widgets`, `FloatingMenu`
 - [x] Own vector line icons for the sidebar (crossed swords, coin, skull, gear) in `Icons.java`; font glyphs looked different per device
-- [x] Run stats editor: section “Run stats” on the RUN page, live values (polled 2×/s), SET per stat via original `SimpleStat.SetValue` (+ `SetMax` if capped), queued to the game thread. Verified in game (values show live, SET works; some stats reset after fights as in the game). Charm left out (developer leftover without effect)
+- [x] Run stats editor: section “Run stats” on the RUN page, live values (polled 2×/s), SET per stat via original `SimpleStat.SetValue` (+ `SetMax` if capped), queued to the game thread. Verified in game (values show live, SET works; Greed/Luck/Growth persist through the run, fight-only stats reset after fights exactly like the game's own cards). Charm left out (developer leftover without effect)
 
 ## Later — QoL
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work
