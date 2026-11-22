@@ -4,8 +4,9 @@ import android.util.Log;
 
 /** Calls into libcrawlermenu.so (already loaded by the patched Application class). */
 final class NativeBridge {
-    // Must match features::Id in native/src/features.h
+    // Must match features::Id in native/src/feature_flags.h
     static final int COIN_MULTIPLIER = 1;
+    static final int INFINITE_CHOICES = 2;
 
     private NativeBridge() {}
 

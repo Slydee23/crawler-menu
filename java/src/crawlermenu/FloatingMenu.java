@@ -96,6 +96,9 @@ final class FloatingMenu {
         LinearLayout p = new LinearLayout(activity);
         p.setOrientation(LinearLayout.VERTICAL);
         p.setPadding(dp(20), dp(16), dp(20), dp(16));
+        // Switches are MATCH_PARENT and do not count when the panel sizes itself, so give the
+        // panel a minimum width that fits the longest switch label.
+        p.setMinimumWidth(dp(360));
 
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(12));
@@ -115,6 +118,7 @@ final class FloatingMenu {
 
         // Cheats (always off when the game starts)
         p.addView(featureSwitch("Coins ×10", NativeBridge.COIN_MULTIPLIER));
+        p.addView(featureSwitch("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
         addCoinsRow(p);
 
         // Background opacity slider (text stays fully readable). Stored across game restarts.

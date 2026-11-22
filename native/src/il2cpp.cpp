@@ -17,6 +17,7 @@ struct Assembly;
 struct Image;
 struct Class;
 struct MethodInfo;  // first field is the native code pointer
+struct FieldInfo;
 struct Thread;
 
 struct Api {
@@ -26,6 +27,8 @@ struct Api {
     const char* (*image_get_name)(const Image*);
     Class* (*class_from_name)(const Image*, const char* name_space, const char* name);
     const MethodInfo* (*class_get_method_from_name)(Class*, const char* name, int argc);
+    FieldInfo* (*class_get_field_from_name)(Class*, const char* name);
+    size_t (*field_get_offset)(FieldInfo*);
     Thread* (*thread_attach)(Domain*);
     void (*thread_detach)(Thread*);
 };
@@ -66,6 +69,8 @@ bool load_api() {
               resolve(handle, "il2cpp_image_get_name", g_api.image_get_name) &&
               resolve(handle, "il2cpp_class_from_name", g_api.class_from_name) &&
               resolve(handle, "il2cpp_class_get_method_from_name", g_api.class_get_method_from_name) &&
+              resolve(handle, "il2cpp_class_get_field_from_name", g_api.class_get_field_from_name) &&
+              resolve(handle, "il2cpp_field_get_offset", g_api.field_get_offset) &&
               resolve(handle, "il2cpp_thread_attach", g_api.thread_attach) &&
               resolve(handle, "il2cpp_thread_detach", g_api.thread_detach);
     xdl_close(handle);
@@ -126,18 +131,36 @@ void detach() {
     t_thread = nullptr;
 }
 
-void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc,
-                  const void** method_info) {
+namespace {
+
+Class* find_class(const char* assembly, const char* name_space, const char* klass) {
     const Image* image = find_image(assembly);
     if (image == nullptr) {
         LOGE("il2cpp: assembly %s not found", assembly);
         return nullptr;
     }
     Class* cls = g_api.class_from_name(image, name_space, klass);
-    if (cls == nullptr) {
-        LOGE("il2cpp: class %s.%s not found", name_space, klass);
-        return nullptr;
+    if (cls == nullptr) LOGE("il2cpp: class %s.%s not found", name_space, klass);
+    return cls;
+}
+
+}  // namespace
+
+int field_offset(const char* assembly, const char* name_space, const char* klass, const char* field) {
+    Class* cls = find_class(assembly, name_space, klass);
+    if (cls == nullptr) return -1;
+    FieldInfo* info = g_api.class_get_field_from_name(cls, field);
+    if (info == nullptr) {
+        LOGE("il2cpp: field %s.%s::%s not found", name_space, klass, field);
+        return -1;
     }
+    return static_cast<int>(g_api.field_get_offset(info));
+}
+
+void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc,
+                  const void** method_info) {
+    Class* cls = find_class(assembly, name_space, klass);
+    if (cls == nullptr) return nullptr;
     const MethodInfo* info = g_api.class_get_method_from_name(cls, method, argc);
     if (info == nullptr) {
         LOGE("il2cpp: method %s.%s::%s(%d args) not found", name_space, klass, method, argc);

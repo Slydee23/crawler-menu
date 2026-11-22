@@ -28,7 +28,8 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Panel draggable by its title, accent color = blue of the game's menu buttons (#263FCD), background opacity slider (20-100 %, saved in SharedPreferences)
 - [x] JNI bridge: `crawlermenu.NativeBridge.setFeature(id, on)` → `native/src/feature_flags.*`; first switch “Coins ×10” (verified 1465 → 1475 for one coin). Cheats are off on every game start
 - [x] Edit money: “Coins [amount] [Add]”. During a run → run coins (PlayerModel.AddCoins, original code, no Greed/multiplier); outside a run (village) → village gold (`Globals.Progression` → `ProgressionData.AddCoins(long)`). Requests are queued and carried out on the game thread from `PlayerModel.Update` / `InputManager.Update` hooks. Verified in game
-- [ ] Cheats: Infinite rerolls · Combo never breaks · Godmode · No mana cost · One-hit kill · XP multiplier · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
+- [x] Infinite rerolls, skips & banishes (one switch): hooks on `SimpleStat.AddValue`/`SetValue` drop decreases of the player's `PlayerStats.Rerolls`/`CardSkips`/`Banishes` (fields resolved by name), counters at 0 are raised to 1. Rerolls verified in game; (?) skips/banishes not yet unlocked in the user's save, test later
+- [ ] Cheats: Combo never breaks · Godmode · No mana cost · One-hit kill · XP multiplier · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work

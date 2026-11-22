@@ -22,6 +22,10 @@ void detach();
 void* find_method(const char* assembly, const char* name_space, const char* klass, const char* method, int argc,
                   const void** method_info = nullptr);
 
+// Byte offset of an instance field inside its object (including the object header),
+// or -1 if not found.
+int field_offset(const char* assembly, const char* name_space, const char* klass, const char* field);
+
 // Load address of libil2cpp.so (for logging offsets that can be compared with a dump).
 uintptr_t base();
 

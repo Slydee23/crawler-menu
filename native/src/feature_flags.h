@@ -8,7 +8,8 @@
 namespace features {
 
 enum Id : int {
-    kCoinMultiplier = 1,  // coin pickups give 10x
+    kCoinMultiplier = 1,   // coin pickups give 10x
+    kInfiniteChoices = 2,  // rerolls, skips and banishes never go down
 };
 
 constexpr int kCoinMultiplierFactor = 10;
