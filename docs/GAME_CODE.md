@@ -42,11 +42,12 @@ the game's IL2CPP metadata locally and by logging calls in game. No dumped code 
 | One-hit kill | `EnemyModel.ResolveDamage(double, CardModel, bool, int, bool, string)` → `DamageResult {double ArmorDamage, HealthDamage, OverkillDamage}` | damage ≥ health + armor + 1, so armor/overkill handling still runs |
 | Combo never breaks | `PlayerModel.set_DebugIsInCombo(bool)` | developer flag; kept set from `PlayerModel.Update`. Ending the turn still ends the combo |
 
-## Run stats editor (not yet verified in game)
+## Run stats editor (verified in game)
 
 Edits `PlayerStats` fields `Health` (current and max), `Armor`, `Might`, `Amount`, `Area`, `Duration`, `Growth`,
-`Greed`, `Luck`, `Recovery`, `Magnet`, `Mana`, `DealCount`, `Curse`, `Charm`, `Risk`, `Scavenge`, `RevivalStacks`,
+`Greed`, `Luck`, `Recovery`, `Magnet`, `Mana`, `DealCount`, `Curse`, `Risk`, `Scavenge`, `RevivalStacks`,
 `Rerolls`, `CardSkips`, `Banishes` via the original `SimpleStat.SetValue` (and `SetMax` if the value is capped).
+`Charm` exists but has no effect (developer leftover), so it is not offered.
 
 ## Other debug code inside the game
 

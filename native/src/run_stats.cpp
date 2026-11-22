@@ -12,6 +12,8 @@ namespace run_stats {
 namespace {
 
 // Order = order in the menu.
+// Charm is left out on purpose: a developer leftover without effect (same finding as in the
+// InventoryCrawler save editor, where PowerUp_Charm is hidden).
 constexpr Def kDefs[] = {
     {"Health", "Health", false},
     {"Health", "Max health", true},
@@ -28,8 +30,7 @@ constexpr Def kDefs[] = {
     {"Mana", "Mana", false},
     {"DealCount", "Deal count", false},
     {"Curse", "Curse", false},
-    {"Charm", "Charm", false},
-    {"Risk", "Risk", false},
+    {"Risk", "Risk", false},  // raises enemy damage and health (RiskDamage/HealthMultiplier)
     {"Scavenge", "Scavenge", false},
     {"RevivalStacks", "Revivals", false},
     {"Rerolls", "Rerolls", false},
