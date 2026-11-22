@@ -268,6 +268,49 @@ int hook_add_growth_xp(void* self, int base_xp, bool force, const void* method) 
     return SHADOWHOOK_CALL_PREV(hook_add_growth_xp, self, amount, force, method);
 }
 
+// --- One-hit kill ----------------------------------------------------------------------------
+// EnemyModel.ResolveDamage(double damage, CardModel damagingCard, bool eraseItems,
+//                          int gorgeousMoonXp, bool isSplashDamage, string damageMetric)
+//   -> DamageResult { double ArmorDamage, HealthDamage, OverkillDamage }  (returned in d0-d2)
+// While the feature is on, every hit deals at least the enemy's health + armor + 1, so the
+// game's own armor and overkill handling still runs.
+struct DamageResult {
+    double armor_damage;
+    double health_damage;
+    double overkill_damage;
+};
+using EnemyResolveDamageFn = DamageResult (*)(void* enemy, double damage, void* card, bool erase_items,
+                                              int moon_xp, bool splash, void* metric, const void* method);
+using DoubleGetterFn = double (*)(void* self, const void* method);
+EnemyResolveDamageFn g_orig_enemy_resolve_damage = nullptr;
+DoubleGetterFn g_enemy_get_health = nullptr;
+DoubleGetterFn g_enemy_get_armor = nullptr;
+
+DamageResult hook_enemy_resolve_damage(void* enemy, double damage, void* card, bool erase_items, int moon_xp,
+                                       bool splash, void* metric, const void* method) {
+    SHADOWHOOK_STACK_SCOPE();
+    double dealt = damage;
+    if (damage > 0 && features::is_enabled(features::kOneHitKill)) {
+        const double lethal = g_enemy_get_health(enemy, nullptr) + g_enemy_get_armor(enemy, nullptr) + 1.0;
+        if (dealt < lethal) dealt = lethal;
+    }
+    return SHADOWHOOK_CALL_PREV(hook_enemy_resolve_damage, enemy, dealt, card, erase_items, moon_xp, splash, metric,
+                                method);
+}
+
+void install_one_hit_kill() {
+    g_enemy_get_health = reinterpret_cast<DoubleGetterFn>(
+        il2cpp::find_method(kGameAssembly, kModelsNs, "EnemyModel", "get_Health", 0));
+    g_enemy_get_armor = reinterpret_cast<DoubleGetterFn>(
+        il2cpp::find_method(kGameAssembly, kModelsNs, "EnemyModel", "get_Armor", 0));
+    if (g_enemy_get_health == nullptr || g_enemy_get_armor == nullptr) {
+        LOGE("One-hit kill unavailable: EnemyModel getters not found");
+        return;
+    }
+    hook("EnemyModel.ResolveDamage", il2cpp::find_method(kGameAssembly, kModelsNs, "EnemyModel", "ResolveDamage", 6),
+         reinterpret_cast<void*>(hook_enemy_resolve_damage), reinterpret_cast<void**>(&g_orig_enemy_resolve_damage));
+}
+
 }  // namespace
 
 void install_game_hooks() {
@@ -302,4 +345,5 @@ void install_game_hooks() {
          reinterpret_cast<void*>(hook_add_enemy_xp), reinterpret_cast<void**>(&g_orig_add_enemy_xp));
     hook("PlayerModel.AddGrowthXp", il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "AddGrowthXp", 2),
          reinterpret_cast<void*>(hook_add_growth_xp), reinterpret_cast<void**>(&g_orig_add_growth_xp));
+    install_one_hit_kill();
 }

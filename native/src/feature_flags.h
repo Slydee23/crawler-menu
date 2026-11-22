@@ -13,6 +13,7 @@ enum Id : int {
     kGodmode = 3,          // player health never goes down
     kNoManaCost = 4,       // cards are always affordable and cost no mana
     kXpMultiplier = 5,     // XP gains are multiplied by the feature's value
+    kOneHitKill = 6,       // every hit on an enemy is lethal
 };
 
 void set_enabled(int id, bool enabled);
