@@ -4,14 +4,15 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 
 ## Phase 0 — Setup
 - [x] Decisions: name CrawlerMenu, base = user's APK v1.6.5, floating button menu, mod code on GitHub, patched APK only for the user
-- [ ] Project repo (`Slydee23/crawler-menu`), `.gitignore` for game files / dumps / builds, LICENSE (MIT)
-- [ ] Toolchain on the PC: JDK 17, Android SDK command-line tools + NDK + platform-tools (adb), apktool, apksigner
-- [ ] Phone: USB debugging on, `adb devices` sees it
+- [x] Project repo (`Slydee23/crawler-menu`), `.gitignore` for game files / dumps / builds, LICENSE (MIT)
+- [x] Toolchain on the PC (in `C:\Android`): JDK 17, SDK cmdline-tools, NDK r27c, build-tools 35 (apksigner), platform-tools (adb), apktool 3.0.3
+- [x] Phone: USB debugging on, `adb devices` sees it (23124RA7EO, Android 15, arm64; game 1.6.5 installed via APKVision repack)
+- [x] Save backup pulled to `build/save-backup/` (adb pull works on Android 15; in Git Bash prefix paths break — use PowerShell for `/sdcard/...`)
 
 ## Phase 1 — Analysis (local only, nothing committed)
-- [ ] IL2CPP dump of `libil2cpp.so` + `global-metadata.dat` (Unity 6 → metadata v31+; tool: Cpp2IL or a recent Il2CppDumper fork)
-- [ ] Find the classes/methods for each cheat: gold, rerolls, combo break, damage taken, damage dealt, mana cost, XP gain, player stats
-- [ ] Document findings in `docs/GAME_CODE.md` (names only, no dumped code)
+- [x] IL2CPP dump with Cpp2IL 2022.1.0-pre-release.21 (`--force-unity-version 6000.0.62 --output-as diffable-cs`) → `dump/out/` (142,063 methods, metadata v31)
+- [x] Find the classes/methods for each cheat (candidates found; semantics to verify on device in Phase 2)
+- [x] Document findings in `docs/GAME_CODE.md` (names only, no dumped code)
 
 ## Phase 2 — Proof of concept
 - [ ] Native lib loads in the game (log line via logcat)
