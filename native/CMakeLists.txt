@@ -27,6 +27,7 @@ add_library(crawlermenu SHARED
     src/il2cpp.cpp
     src/hooks.cpp
     src/feature_flags.cpp
+    src/run_stats.cpp
 )
 target_include_directories(crawlermenu PRIVATE src)
 target_compile_options(crawlermenu PRIVATE -fvisibility=hidden -fno-exceptions -fno-rtti -Wall -Wextra)

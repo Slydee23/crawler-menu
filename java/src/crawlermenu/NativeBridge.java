@@ -19,6 +19,42 @@ final class NativeBridge {
 
     private static native void setFeatureValue(int id, int value);
 
+    private static native String[] getStatLabels();
+
+    private static native float[] getStatValues();
+
+    private static native boolean setStat(int index, float value);
+
+    /** Labels of the editable run stats, in menu order (empty if the native side is missing). */
+    static String[] statLabels() {
+        try {
+            return getStatLabels();
+        } catch (Throwable t) {
+            Log.e(Loader.TAG, "getStatLabels failed", t);
+            return new String[0];
+        }
+    }
+
+    /** Current run stat values (NaN = unavailable), or null when no run is active. */
+    static float[] statValues() {
+        try {
+            return getStatValues();
+        } catch (Throwable t) {
+            Log.e(Loader.TAG, "getStatValues failed", t);
+            return null;
+        }
+    }
+
+    /** Queues setting a run stat for the next game frame. False if no run is active. */
+    static boolean queueStat(int index, float value) {
+        try {
+            return setStat(index, value);
+        } catch (Throwable t) {
+            Log.e(Loader.TAG, "setStat(" + index + ") failed", t);
+            return false;
+        }
+    }
+
     /** Sets a feature's numeric setting (e.g. the coin multiplier). Never throws. */
     static void setValue(int id, int value) {
         try {

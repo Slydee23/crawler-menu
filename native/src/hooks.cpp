@@ -8,6 +8,7 @@
 
 #include "feature_flags.h"
 #include "il2cpp.h"
+#include "run_stats.h"
 #include "log.h"
 
 namespace {
@@ -98,6 +99,72 @@ void* read_ref(void* object, int offset) {
 
 bool g_stat_hooks_ready = false;  // set once all of the above is resolved and hooked
 
+// --- Run stats editor ----------------------------------------------------------------------
+// Publishes the player's stat values for the menu and applies queued "set" requests.
+// See run_stats.cpp for the list of stats.
+using StatGetMaxFn = float (*)(void* stat, const void* method);
+using StatSetMaxFn = void (*)(void* stat, float max, bool notify, const void* method);
+StatGetMaxFn g_stat_get_max = nullptr;
+StatSetMaxFn g_stat_set_max = nullptr;
+const void* g_stat_set_max_method = nullptr;
+int g_run_stat_offsets[64];
+int g_run_stat_frame = 0;  // game thread only
+// Set last in install_run_stats(): the game thread may already be running update_run_stats().
+std::atomic<bool> g_run_stats_ready{false};
+
+void set_run_stat(void* stat, const run_stats::Def& def, float wanted) {
+    const float before = def.max ? g_stat_get_max(stat, nullptr) : g_stat_get_value(stat, g_stat_get_value_method);
+    if (def.max) {
+        g_stat_set_max(stat, wanted, true, g_stat_set_max_method);
+    } else {
+        // Original SetValue: bypasses our protection hooks (godmode etc.) on purpose.
+        g_orig_stat_set_value(stat, wanted, true, g_stat_set_value_method);
+        // If the game capped the value at the stat's maximum, raise the maximum and set again.
+        if (g_stat_get_value(stat, g_stat_get_value_method) + 0.001f < wanted) {
+            g_stat_set_max(stat, wanted, true, g_stat_set_max_method);
+            g_orig_stat_set_value(stat, wanted, true, g_stat_set_value_method);
+        }
+    }
+    const float after = def.max ? g_stat_get_max(stat, nullptr) : g_stat_get_value(stat, g_stat_get_value_method);
+    LOGI("Run stat %s: %.2f -> %.2f (wanted %.2f)", def.label, before, after, wanted);
+}
+
+void update_run_stats(void* stats) {
+    if (!g_run_stats_ready.load(std::memory_order_acquire)) return;
+    const bool publish = (g_run_stat_frame++ % 10) == 0;  // the menu polls twice a second
+    for (int i = 0; i < run_stats::count(); i++) {
+        const run_stats::Def& def = run_stats::def(i);
+        void* stat = read_ref(stats, g_run_stat_offsets[i]);
+        if (stat == nullptr) continue;
+        float wanted;
+        if (run_stats::take_request(i, &wanted)) {
+            set_run_stat(stat, def, wanted);
+        }
+        if (publish) {
+            run_stats::publish(i, def.max ? g_stat_get_max(stat, nullptr) : g_stat_get_value(stat, g_stat_get_value_method));
+        }
+    }
+}
+
+void install_run_stats() {
+    constexpr const char* kLogicNs = "Nosebleed.Pancake.GameLogic";
+    g_stat_get_max = reinterpret_cast<StatGetMaxFn>(
+        il2cpp::find_method(kGameAssembly, kLogicNs, "SimpleStat", "GetMaxValue", 0));
+    g_stat_set_max = reinterpret_cast<StatSetMaxFn>(
+        il2cpp::find_method(kGameAssembly, kLogicNs, "SimpleStat", "SetMax", 2, &g_stat_set_max_method));
+    int found = 0;
+    for (int i = 0; i < run_stats::count(); i++) {
+        g_run_stat_offsets[i] = il2cpp::field_offset(kGameAssembly, kLogicNs, "PlayerStats", run_stats::def(i).field);
+        if (g_run_stat_offsets[i] >= 0) found++;
+    }
+    if (g_stat_get_max == nullptr || g_stat_set_max == nullptr) {
+        LOGE("Run stats unavailable: SimpleStat.GetMaxValue/SetMax not found");
+        return;
+    }
+    g_run_stats_ready.store(true, std::memory_order_release);
+    LOGI("Run stats ready (%d of %d stats found)", found, run_stats::count());
+}
+
 // Called every frame from PlayerModel.Update.
 void refresh_player_stats(void* player) {
     if (!g_stat_hooks_ready) return;
@@ -110,6 +177,7 @@ void refresh_player_stats(void* player) {
     g_stat_skips.store(skips, std::memory_order_relaxed);
     g_stat_banishes.store(banishes, std::memory_order_relaxed);
     g_stat_health.store(read_ref(stats, g_off_health), std::memory_order_relaxed);
+    update_run_stats(stats);
 
     // A counter at 0 would leave the game's buttons disabled, so keep at least 1.
     if (!infinite_choices_on()) return;
@@ -205,6 +273,7 @@ void install_stat_protection() {
         hook("SimpleStat.SetValue", set_value, reinterpret_cast<void*>(hook_stat_set_value),
              reinterpret_cast<void**>(&g_orig_stat_set_value))) {
         g_stat_hooks_ready = true;
+        install_run_stats();
         LOGI("Stat protection ready (offsets rerolls=0x%x skips=0x%x banishes=0x%x health=0x%x)", g_off_rerolls,
              g_off_skips, g_off_banishes, g_off_health);
     }

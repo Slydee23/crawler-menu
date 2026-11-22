@@ -37,7 +37,7 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Combo never breaks: keeps the developer property `PlayerModel.DebugIsInCombo` set from the Update hook (every card continues the combo; ending the turn still ends it). Verified in game
 - [x] Menu redesign “gothic gaming”: near-black panel with double gold frame, blood red accents, serif headings; fixed compact size (380×240 dp, scrolls); icon sidebar COMBAT / ECONOMY / RUN / SETTINGS (last tab remembered). Code split into `Theme`, `Widgets`, `FloatingMenu`
 - [x] Own vector line icons for the sidebar (crossed swords, coin, skull, gear) in `Icons.java`; font glyphs looked different per device
-- [ ] Cheats: Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
+- [~] Run stats editor: section “Run stats” on the RUN page, live values (polled 2×/s), SET per stat via original `SimpleStat.SetValue` (+ `SetMax` if capped), queued to the game thread. (?) Built, not yet tested in game — user tests at the end
 
 ## Later — QoL
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work

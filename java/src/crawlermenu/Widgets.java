@@ -228,6 +228,101 @@ final class Widgets {
         return box;
     }
 
+    /**
+     * "— RUN STATS —" section: one row per stat with its live value, an input and a SET button.
+     * Live values are polled twice a second while the section is on screen.
+     */
+    View runStatsSection() {
+        LinearLayout box = new LinearLayout(activity);
+        box.setOrientation(LinearLayout.VERTICAL);
+
+        TextView header = theme.heading("— Run stats —", 12, Theme.GOLD);
+        header.setPadding(0, dp(14), 0, dp(2));
+        box.addView(header);
+        TextView hint = theme.body("Current value on the left. Some stats reset after each fight.", 11,
+                Theme.TEXT_MUTED);
+        hint.setPadding(0, 0, 0, dp(4));
+        box.addView(hint);
+
+        TextView status = theme.body("", 12, Theme.TEXT_MUTED);
+        status.setVisibility(View.GONE);
+
+        String[] labels = NativeBridge.statLabels();
+        TextView[] current = new TextView[labels.length];
+        for (int i = 0; i < labels.length; i++) {
+            box.addView(statRow(i, labels[i], current, status));
+        }
+        status.setPadding(0, dp(4), 0, dp(4));
+        box.addView(status);
+
+        // Poll live values while visible.
+        Runnable poll = new Runnable() {
+            @Override public void run() {
+                if (box.isShown()) {
+                    float[] values = NativeBridge.statValues();
+                    for (int i = 0; i < current.length; i++) {
+                        current[i].setText(values == null || i >= values.length ? "–" : formatStat(values[i]));
+                    }
+                }
+                box.postDelayed(this, 500);
+            }
+        };
+        box.post(poll);
+        return box;
+    }
+
+    private View statRow(int index, String label, TextView[] current, TextView status) {
+        LinearLayout row = row();
+        row.setMinimumHeight(dp(36));
+        row.addView(theme.body(label, 13, Theme.TEXT), fill());
+
+        TextView value = theme.body("–", 12, Theme.TEXT_MUTED);
+        value.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        current[index] = value;
+        row.addView(value, new LinearLayout.LayoutParams(dp(52), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        EditText input = numberField(7, "");
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.WRAP_CONTENT);
+        inputLp.leftMargin = dp(6);
+        inputLp.rightMargin = dp(4);
+        row.addView(input, inputLp);
+
+        TextView set = theme.heading("Set", 10, Theme.TEXT);
+        set.setGravity(Gravity.CENTER);
+        set.setSingleLine(true);
+        set.setPadding(dp(8), dp(4), dp(8), dp(4));
+        set.setBackground(theme.actionButton());
+        row.addView(set);
+
+        set.setOnClickListener(v -> {
+            hideKeyboard(input);
+            status.setVisibility(View.VISIBLE);
+            float wanted;
+            try {
+                wanted = Float.parseFloat(input.getText().toString().trim().replace(',', '.'));
+            } catch (NumberFormatException e) {
+                status.setText("Enter a number for " + label + ".");
+                return;
+            }
+            if (NativeBridge.queueStat(index, wanted)) {
+                status.setText(label + " set to " + formatStat(wanted) + ".");
+                input.setText("");
+            } else {
+                status.setText("Start a run first.");
+            }
+        });
+        return row;
+    }
+
+    /** Whole numbers without decimals, others with up to two. NaN = unavailable. */
+    private static String formatStat(float v) {
+        if (Float.isNaN(v)) return "–";
+        if (Math.abs(v - Math.round(v)) < 0.005f) return String.valueOf(Math.round(v));
+        return String.format(java.util.Locale.US, "%.2f", v);
+    }
+
     private void hideKeyboard(View view) {
         InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);

@@ -285,6 +285,7 @@ final class FloatingMenu {
         LinearLayout p = page("Run");
         p.addView(widgets.switchRow("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
         p.addView(widgets.switchRow("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
+        p.addView(widgets.runStatsSection());
         return p;
     }
 
