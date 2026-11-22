@@ -15,10 +15,10 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Document findings in `docs/GAME_CODE.md` (names only, no dumped code)
 
 ## Phase 2 — Proof of concept
-- [x] Native lib loads in the game (log line via logcat): loaded from a smali patch in `Application.<clinit>`; the game survives (PairIP is already neutralized in the APKVision repack)
+- [ ] Native lib loads in the game (log line via logcat)
 - [ ] Resolve one method by name via the IL2CPP API and hook it
 - [ ] First cheat end-to-end: Edit Money
-- [x] Local patch script: `tools/patch-apk.ps1` (user's APK → `build/patched.apk`, debug-signed)
+- [ ] Local patch script: user's APK → patched, signed APK in `build/`
 
 ## Phase 3 — Menu
 - [ ] Floating button + menu (Java), JNI bridge to native toggles/values
