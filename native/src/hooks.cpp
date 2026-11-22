@@ -239,6 +239,35 @@ void install_no_mana_cost() {
          reinterpret_cast<void*>(hook_try_use_mana), reinterpret_cast<void**>(&g_orig_try_use_mana));
 }
 
+// --- XP multiplier ---------------------------------------------------------------------------
+// The multiplier is applied at the entry points (enemy XP, growth XP) so the game's whole
+// level-up flow sees the bigger amount. Multiplying inside AddXp raised the level silently
+// without offering level-up choices.
+using AddSourceXpFn = int (*)(void* self, int base_xp, bool force, const void* method);
+AddSourceXpFn g_orig_add_enemy_xp = nullptr;
+AddSourceXpFn g_orig_add_growth_xp = nullptr;
+
+int multiply_xp(int base_xp) {
+    const int factor = features::value(features::kXpMultiplier);
+    if (base_xp <= 0 || factor <= 1 || !features::is_enabled(features::kXpMultiplier)) return base_xp;
+    const int64_t multiplied = static_cast<int64_t>(base_xp) * factor;
+    return multiplied > INT32_MAX ? INT32_MAX : static_cast<int>(multiplied);
+}
+
+int hook_add_enemy_xp(void* self, int base_xp, bool force, const void* method) {
+    SHADOWHOOK_STACK_SCOPE();
+    const int amount = multiply_xp(base_xp);
+    if (amount != base_xp) LOGI("Enemy XP: %d -> %d (multiplier)", base_xp, amount);
+    return SHADOWHOOK_CALL_PREV(hook_add_enemy_xp, self, amount, force, method);
+}
+
+int hook_add_growth_xp(void* self, int base_xp, bool force, const void* method) {
+    SHADOWHOOK_STACK_SCOPE();
+    const int amount = multiply_xp(base_xp);
+    if (amount != base_xp) LOGI("Growth XP: %d -> %d (multiplier)", base_xp, amount);
+    return SHADOWHOOK_CALL_PREV(hook_add_growth_xp, self, amount, force, method);
+}
+
 }  // namespace
 
 void install_game_hooks() {
@@ -269,4 +298,8 @@ void install_game_hooks() {
     install_stat_protection();
     install_no_mana_cost();
 
+    hook("PlayerModel.AddEnemyXp", il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "AddEnemyXp", 2),
+         reinterpret_cast<void*>(hook_add_enemy_xp), reinterpret_cast<void**>(&g_orig_add_enemy_xp));
+    hook("PlayerModel.AddGrowthXp", il2cpp::find_method(kGameAssembly, kModelsNs, "PlayerModel", "AddGrowthXp", 2),
+         reinterpret_cast<void*>(hook_add_growth_xp), reinterpret_cast<void**>(&g_orig_add_growth_xp));
 }

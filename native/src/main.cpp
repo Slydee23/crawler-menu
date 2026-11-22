@@ -14,8 +14,10 @@ constexpr const char* kGameAssembly = "Pancake";  // assembly with the game logi
 
 // Runs off the main thread: waits for the IL2CPP runtime, then hooks game methods.
 void* game_thread(void*) {
-    if (!il2cpp::wait_until_ready(kGameAssembly, 60 * 1000)) {
-        LOGE("il2cpp runtime not ready after 60 s, giving up");
+    // Unity only initializes once the game is visible (e.g. not while the screen is off), so wait
+    // generously; the il2cpp_init hook tells us exactly when it is done.
+    if (!il2cpp::wait_until_ready(kGameAssembly, 30 * 60 * 1000)) {
+        LOGE("il2cpp runtime not ready after 30 min, giving up");
         return nullptr;
     }
 

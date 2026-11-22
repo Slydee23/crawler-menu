@@ -12,6 +12,7 @@ enum Id : int {
     kInfiniteChoices = 2,  // rerolls, skips and banishes never go down
     kGodmode = 3,          // player health never goes down
     kNoManaCost = 4,       // cards are always affordable and cost no mana
+    kXpMultiplier = 5,     // XP gains are multiplied by the feature's value
 };
 
 void set_enabled(int id, bool enabled);

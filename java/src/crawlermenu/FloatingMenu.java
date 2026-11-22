@@ -43,7 +43,8 @@ final class FloatingMenu {
     private static final int DEFAULT_PANEL_OPACITY = 92;  // percent, was alpha 235
     private static final int MIN_PANEL_OPACITY = 20;
     private static final String PREF_COIN_MULTIPLIER = "coin_multiplier";
-    private static final int DEFAULT_COIN_MULTIPLIER = 10;
+    private static final String PREF_XP_MULTIPLIER = "xp_multiplier";
+    private static final int DEFAULT_MULTIPLIER = 10;
 
     private final Activity activity;
     private final ViewGroup decor;
@@ -121,7 +122,8 @@ final class FloatingMenu {
         p.addView(title);
 
         // Cheats (always off when the game starts)
-        coinMultiplierRow(p);
+        multiplierRow(p, "Coins", NativeBridge.COIN_MULTIPLIER, PREF_COIN_MULTIPLIER);
+        multiplierRow(p, "XP", NativeBridge.XP_MULTIPLIER, PREF_XP_MULTIPLIER);
         p.addView(featureSwitch("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
         p.addView(featureSwitch("Godmode", NativeBridge.GODMODE));
         p.addView(featureSwitch("No mana cost", NativeBridge.NO_MANA_COST));
@@ -173,20 +175,23 @@ final class FloatingMenu {
         return p;
     }
 
-    /** "Coins × [factor]  (switch)" — the factor is editable and remembered across restarts. */
-    private void coinMultiplierRow(LinearLayout parent) {
+    /**
+     * "<name> × [factor]  (switch)" — the factor is editable and remembered across restarts
+     * (under {@code prefKey}); the switch is off on every game start like all cheats.
+     */
+    private void multiplierRow(LinearLayout parent, String name, int featureId, String prefKey) {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView label = new TextView(activity);
-        label.setText("Coins ×");
+        label.setText(name + " ×");
         label.setTextColor(Color.WHITE);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         row.addView(label);
 
-        int saved = prefs().getInt(PREF_COIN_MULTIPLIER, DEFAULT_COIN_MULTIPLIER);
-        NativeBridge.setValue(NativeBridge.COIN_MULTIPLIER, saved);
+        int saved = prefs().getInt(prefKey, DEFAULT_MULTIPLIER);
+        NativeBridge.setValue(featureId, saved);
 
         EditText factor = new EditText(activity);
         factor.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -208,15 +213,15 @@ final class FloatingMenu {
                     return;  // empty while typing: keep the previous factor
                 }
                 if (value < 1) return;
-                NativeBridge.setValue(NativeBridge.COIN_MULTIPLIER, value);
-                prefs().edit().putInt(PREF_COIN_MULTIPLIER, value).apply();
+                NativeBridge.setValue(featureId, value);
+                prefs().edit().putInt(prefKey, value).apply();
             }
         });
         LinearLayout.LayoutParams factorLp = new LinearLayout.LayoutParams(dp(72), ViewGroup.LayoutParams.WRAP_CONTENT);
         factorLp.leftMargin = dp(6);
         row.addView(factor, factorLp);
 
-        Switch toggle = featureSwitch("", NativeBridge.COIN_MULTIPLIER);
+        Switch toggle = featureSwitch("", featureId);
         // Weight 1 + MATCH width pushes the switch to the right edge like the other switches.
         row.addView(toggle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         parent.addView(row);

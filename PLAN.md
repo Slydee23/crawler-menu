@@ -31,7 +31,9 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Infinite rerolls, skips & banishes (one switch): hooks on `SimpleStat.AddValue`/`SetValue` drop decreases of the player's `PlayerStats.Rerolls`/`CardSkips`/`Banishes` (fields resolved by name), counters at 0 are raised to 1. Rerolls, skips and banishes verified in game
 - [x] Godmode: same stat protection for `PlayerStats.Health` (damage is still calculated by `PlayerModel.ResolveDamage`, health then drops point by point via SimpleStat). Verified in game
 - [x] No mana cost: `PlayerModel.CanAffordManaCost` → always true, `PlayerModel.TryUseMana` → success without spending (observed first: playing a card = `TryUseMana(cost)` → `Mana.AddValue(-cost)`). Verified in game (no mana spent)
-- [ ] Cheats: Combo never breaks · One-hit kill · XP multiplier · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
+- [x] XP multiplier: “XP × [factor]”, applied at the entry points `PlayerModel.AddEnemyXp`/`AddGrowthXp` (multiplying inside `AddXp` raised the level silently without level-up choices). Verified in game (x50, level-ups with card choices)
+- [x] Robustness: the game thread waits up to 30 min for `il2cpp_init` (Unity only initializes once the game is visible; with the screen off it took 52 s, the old 60 s limit would have disabled all cheats)
+- [ ] Cheats: Combo never breaks · One-hit kill · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Later — QoL
 - [ ] (?) More QoL ideas from the user, to be collected once the cheats work
