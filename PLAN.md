@@ -24,7 +24,9 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Local patch script: `tools/patch-apk.ps1` (user's APK → `build/patched.apk`, debug-signed)
 
 ## Phase 3 — Menu
-- [ ] Floating button + menu (Java), JNI bridge to native toggles/values
+- [x] Floating button + empty menu panel (Java, `java/src/crawlermenu/`), added to the activity decor view; started from a smali patch in `Application.attachBaseContext`, shipped as an extra `classesN.dex` (`tools/build-java.ps1`)
+- [ ] Draggable panel, colors matching the game
+- [ ] JNI bridge to native toggles/values
 - [ ] Cheats: Infinite rerolls · Combo never breaks · Godmode · No mana cost · One-hit kill · XP multiplier · Edit money · Edit run stats (Health, Armor, Might, Amount, Area, Growth, …)
 
 ## Phase 4 — Release (code only)

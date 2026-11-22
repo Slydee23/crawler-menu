@@ -34,6 +34,12 @@ if (-not $SkipNativeBuild) {
 $lib = Join-Path $build "native\libcrawlermenu.so"
 if (-not (Test-Path $lib)) { throw "Native library not found: $lib" }
 
+# 1b. Java menu (small, always rebuilt)
+Write-Host "== Building Java menu"
+& (Join-Path $PSScriptRoot "build-java.ps1") -AndroidHome $AndroidHome
+$menuDex = Join-Path $build "java\classes.dex"
+if (-not (Test-Path $menuDex)) { throw "Menu dex not found: $menuDex" }
+
 # 2. Decode (no resources needed)
 Write-Host "== Decoding APK"
 Run $java @("-jar", $apktool, "d", "-r", "-f", "-o", $decoded, $apkPath)
@@ -52,14 +58,31 @@ $re = [regex]'(?s)(\.method static constructor <clinit>\(\)V\s+\.locals \d+\s*\n
 if (-not $re.IsMatch($text)) { throw "Could not find <clinit> in Application.smali (game layout changed?)" }
 $inject = "`n    $marker`n    const-string v0, `"crawlermenu`"`n    invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V`n"
 $text = $re.Replace($text, { param($m) $m.Value + $inject }, 1)
+
+# 4b. Start the Java menu once the Application has its context: call crawlermenu.Loader.init(this)
+#     right before attachBaseContext() returns.
+$re = [regex]'(?s)(\.method protected attachBaseContext\(Landroid/content/Context;\)V.*?)(\n\s*return-void\s*\n\.end method)'
+if (-not $re.IsMatch($text)) { throw "Could not find attachBaseContext in Application.smali (game layout changed?)" }
+$text = $re.Replace($text, { param($m) $m.Groups[1].Value + "`n`n    $marker`n    invoke-static {p0}, Lcrawlermenu/Loader;->init(Landroid/app/Application;)V`n" + $m.Groups[2].Value }, 1)
 [System.IO.File]::WriteAllText($appSmali, $text, (New-Object System.Text.UTF8Encoding($false)))
 
-# 5. Rebuild, align, sign
+# 5. Rebuild, add the menu dex as the next classesN.dex, align, sign
 Write-Host "== Rebuilding"
 $unsigned = Join-Path $build "unsigned.apk"
 $aligned  = Join-Path $build "aligned.apk"
 $patched  = Join-Path $build "patched.apk"
 Run $java @("-jar", $apktool, "b", "-f", "-o", $unsigned, $decoded)
+
+$dexIndex = (Get-ChildItem $decoded -Directory -Filter "smali*").Count + 1
+$dexName  = "classes$dexIndex.dex"
+$dexDir   = Join-Path $build "dex-stage"
+if (Test-Path $dexDir) { Remove-Item $dexDir -Recurse -Force }
+New-Item -ItemType Directory $dexDir | Out-Null
+Copy-Item $menuDex (Join-Path $dexDir $dexName)
+Push-Location $dexDir
+try { Run (Join-Path $bt "aapt.exe") @("add", $unsigned, $dexName) } finally { Pop-Location }
+Write-Host "== Added menu as $dexName"
+
 if (Test-Path $aligned) { Remove-Item $aligned -Force }
 Run (Join-Path $bt "zipalign.exe") @("-p", "4", $unsigned, $aligned)
 
