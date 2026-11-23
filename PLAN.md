@@ -50,5 +50,10 @@ Status legend: `[ ]` open · `[x]` done · `[~]` in progress · `(?)` needs deci
 - [x] Combo never breaks → COMBAT; infinite rerolls / skips / banishes → ECONOMY as three separate switches (feature ids 2, 8, 9); RUN = run stats editor only
 - [x] Visible credit “© 2026 Slydee” in the title bar, version/license line in SETTINGS
 - [x] User check of the new layout on the phone (Add coins moved to the top of ECONOMY)
-- [ ] Private APK for the user's brother (owns the game) — local file only
+- [x] Private APK for the user's brother (owns the game) — local file only: `build/CrawlerMenu-v0.2.0.apk`, signed with `build/debug.keystore` (keep it for updates over the top)
+- [x] Tag v0.2.0 + GitHub release (source only): https://github.com/Slydee23/crawler-menu/releases/tag/v0.2.0
+
+## Showcase trailer (30–60 s)
+- [ ] Shot list for the user → user records clips on the phone
+- [ ] Edit/cut the clips into the trailer (ffmpeg), title + end card
 - [x] Tag v0.1.0 + GitHub release (source only, no APK): https://github.com/Slydee23/crawler-menu/releases/tag/v0.1.0
