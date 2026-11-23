@@ -13,9 +13,9 @@ Sister project: [InventoryCrawler — a Vampire Crawlers save editor](https://gi
 
 | Category | Feature |
 | --- | --- |
-| **Combat** | Godmode · One-hit kill · No mana cost |
-| **Economy** | Coin multiplier (custom factor) · XP multiplier (custom factor, level-ups still offer card choices) · Add coins (run coins during a run, village gold outside) |
-| **Run** | Combo never breaks · Infinite rerolls, skips & banishes · Run stats editor (Health, Max health, Armor, Might, Amount, Area, Duration, Growth, Greed, Luck, …) with live values |
+| **Combat** | Godmode · One-hit kill · No mana cost · Combo never breaks |
+| **Economy** | Add coins (run coins during a run, village gold outside) · Coin multiplier (custom factor) · XP multiplier (custom factor, level-ups still offer card choices) · Infinite rerolls · Infinite skips · Infinite banishes |
+| **Run** | Run stats editor (Health, Max health, Armor, Might, Amount, Area, Duration, Growth, Greed, Luck, …) with live values |
 | **Settings** | Panel background opacity |
 
 - Draggable round **CM** button and a compact panel with a sidebar, gothic look.

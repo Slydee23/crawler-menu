@@ -10,6 +10,7 @@ In-game mod menu (floating button + menu) for *Vampire Crawlers* on Android (Uni
 ## Legal / distribution rules (decided with the user)
 - **Only our own code goes to GitHub.** Never commit: APKs, `.so`/`.dat`/asset files from the game, IL2CPP dumps (`dump.cs`, generated headers, Cpp2IL output), patched builds. All of that lives in gitignored folders (`game-files/`, `dump/`, `build/`).
 - The patched APK is built **locally, for the user only** — never published or attached to releases.
+  - Exception decided by the user (2026-11-23): a private copy for the user's brother, who owns the game. Still never uploaded, published or attached anywhere.
 - The repo ships source + a local build/patch script that works on the user's own APK.
 - Unofficial fan project, not affiliated with poncle / Nosebleed Interactive. Single-player only.
 

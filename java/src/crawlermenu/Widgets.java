@@ -229,16 +229,14 @@ final class Widgets {
     }
 
     /**
-     * "— RUN STATS —" section: one row per stat with its live value, an input and a SET button.
+     * Run stats editor: one row per stat with its live value, an input and a SET button.
      * Live values are polled twice a second while the section is on screen.
+     * The page around it provides the "— RUN STATS —" header.
      */
     View runStatsSection() {
         LinearLayout box = new LinearLayout(activity);
         box.setOrientation(LinearLayout.VERTICAL);
 
-        TextView header = theme.heading("— Run stats —", 12, Theme.GOLD);
-        header.setPadding(0, dp(14), 0, dp(2));
-        box.addView(header);
         TextView hint = theme.body("Current value on the left. Some stats reset after each fight.", 11,
                 Theme.TEXT_MUTED);
         hint.setPadding(0, 0, 0, dp(4));

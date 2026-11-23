@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <initializer_list>
 
 #include <shadowhook.h>
 
@@ -64,17 +63,15 @@ std::atomic<void*> g_stat_skips{nullptr};
 std::atomic<void*> g_stat_banishes{nullptr};
 std::atomic<void*> g_stat_health{nullptr};
 
-bool infinite_choices_on() { return features::is_enabled(features::kInfiniteChoices); }
 bool godmode_on() { return features::is_enabled(features::kGodmode); }
 
 bool is_protected_stat(void* stat) {
     if (stat == nullptr) return false;
-    if (infinite_choices_on() && (stat == g_stat_rerolls.load(std::memory_order_relaxed) ||
-                                  stat == g_stat_skips.load(std::memory_order_relaxed) ||
-                                  stat == g_stat_banishes.load(std::memory_order_relaxed))) {
-        return true;
-    }
-    return godmode_on() && stat == g_stat_health.load(std::memory_order_relaxed);
+    auto is = [stat](const std::atomic<void*>& slot) { return stat == slot.load(std::memory_order_relaxed); };
+    return (features::is_enabled(features::kInfiniteRerolls) && is(g_stat_rerolls)) ||
+           (features::is_enabled(features::kInfiniteSkips) && is(g_stat_skips)) ||
+           (features::is_enabled(features::kInfiniteBanishes) && is(g_stat_banishes)) ||
+           (godmode_on() && is(g_stat_health));
 }
 
 float hook_stat_add_value(void* stat, float value, bool notify, const void* method) {
@@ -180,10 +177,16 @@ void refresh_player_stats(void* player) {
     update_run_stats(stats);
 
     // A counter at 0 would leave the game's buttons disabled, so keep at least 1.
-    if (!infinite_choices_on()) return;
-    for (void* stat : {rerolls, skips, banishes}) {
-        if (stat != nullptr && g_stat_get_value(stat, g_stat_get_value_method) < 1.0f) {
-            g_orig_stat_set_value(stat, 1.0f, true, g_stat_set_value_method);
+    const struct {
+        void* stat;
+        int feature;
+    } counters[] = {{rerolls, features::kInfiniteRerolls},
+                    {skips, features::kInfiniteSkips},
+                    {banishes, features::kInfiniteBanishes}};
+    for (const auto& c : counters) {
+        if (c.stat != nullptr && features::is_enabled(c.feature) &&
+            g_stat_get_value(c.stat, g_stat_get_value_method) < 1.0f) {
+            g_orig_stat_set_value(c.stat, 1.0f, true, g_stat_set_value_method);
         }
     }
 }

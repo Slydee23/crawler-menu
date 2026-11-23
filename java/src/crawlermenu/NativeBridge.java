@@ -6,12 +6,14 @@ import android.util.Log;
 final class NativeBridge {
     // Must match features::Id in native/src/feature_flags.h
     static final int COIN_MULTIPLIER = 1;
-    static final int INFINITE_CHOICES = 2;
+    static final int INFINITE_REROLLS = 2;
     static final int GODMODE = 3;
     static final int NO_MANA_COST = 4;
     static final int XP_MULTIPLIER = 5;
     static final int ONE_HIT_KILL = 6;
     static final int COMBO_NEVER_BREAKS = 7;
+    static final int INFINITE_SKIPS = 8;
+    static final int INFINITE_BANISHES = 9;
 
     private NativeBridge() {}
 

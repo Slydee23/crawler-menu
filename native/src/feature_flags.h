@@ -9,12 +9,14 @@ namespace features {
 
 enum Id : int {
     kCoinMultiplier = 1,   // coin pickups are multiplied by the feature's value
-    kInfiniteChoices = 2,  // rerolls, skips and banishes never go down
+    kInfiniteRerolls = 2,  // rerolls never go down (id kept from the former combined switch)
     kGodmode = 3,          // player health never goes down
     kNoManaCost = 4,       // cards are always affordable and cost no mana
     kXpMultiplier = 5,     // XP gains are multiplied by the feature's value
     kOneHitKill = 6,       // every hit on an enemy is lethal
     kComboNeverBreaks = 7, // the card combo never resets
+    kInfiniteSkips = 8,    // card skips never go down
+    kInfiniteBanishes = 9, // banishes never go down
 };
 
 void set_enabled(int id, bool enabled);

@@ -31,6 +31,8 @@ import java.util.List;
  */
 final class FloatingMenu {
     private static final String BUTTON_TAG = "crawlermenu.button";
+    static final String VERSION = "v0.2.0";
+    static final String COPYRIGHT = "© 2026 Slydee";
 
     private static final String PREFS = "crawlermenu";
     private static final String PREF_PANEL_OPACITY = "panel_opacity";
@@ -171,6 +173,11 @@ final class FloatingMenu {
         TextView title = theme.heading("Crawler Menu", 13, Theme.GOLD);
         bar.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
+        // Author credit, always visible. Not clickable, so dragging the bar still works on it.
+        TextView credit = theme.body(COPYRIGHT, 10, Theme.TEXT_MUTED);
+        credit.setPadding(dp(8), 0, dp(2), 0);
+        bar.addView(credit);
+
         TextView close = theme.body("✕", 15, Theme.TEXT_MUTED);
         close.setPadding(dp(10), dp(2), dp(8), dp(2));
         close.setOnClickListener(v -> panelView.setVisibility(View.GONE));
@@ -270,21 +277,23 @@ final class FloatingMenu {
         p.addView(widgets.switchRow("Godmode", NativeBridge.GODMODE));
         p.addView(widgets.switchRow("One-hit kill", NativeBridge.ONE_HIT_KILL));
         p.addView(widgets.switchRow("No mana cost", NativeBridge.NO_MANA_COST));
+        p.addView(widgets.switchRow("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
         return p;
     }
 
     private View economyPage() {
         LinearLayout p = page("Economy");
+        p.addView(widgets.addCoinsRow());
         p.addView(widgets.multiplierRow("Coins", NativeBridge.COIN_MULTIPLIER, PREF_COIN_MULTIPLIER));
         p.addView(widgets.multiplierRow("XP", NativeBridge.XP_MULTIPLIER, PREF_XP_MULTIPLIER));
-        p.addView(widgets.addCoinsRow());
+        p.addView(widgets.switchRow("Infinite rerolls", NativeBridge.INFINITE_REROLLS));
+        p.addView(widgets.switchRow("Infinite skips", NativeBridge.INFINITE_SKIPS));
+        p.addView(widgets.switchRow("Infinite banishes", NativeBridge.INFINITE_BANISHES));
         return p;
     }
 
     private View runPage() {
-        LinearLayout p = page("Run");
-        p.addView(widgets.switchRow("Combo never breaks", NativeBridge.COMBO_NEVER_BREAKS));
-        p.addView(widgets.switchRow("Infinite rerolls, skips & banishes", NativeBridge.INFINITE_CHOICES));
+        LinearLayout p = page("Run stats");
         p.addView(widgets.runStatsSection());
         return p;
     }
@@ -297,6 +306,10 @@ final class FloatingMenu {
         TextView note = theme.body("Cheats are off every time the game starts.", 12, Theme.TEXT_MUTED);
         note.setPadding(0, dp(6), 0, 0);
         p.addView(note);
+        TextView about = theme.body("CrawlerMenu " + VERSION + " · " + COPYRIGHT + " · MIT license", 11,
+                Theme.TEXT_MUTED);
+        about.setPadding(0, dp(10), 0, 0);
+        p.addView(about);
         return p;
     }
 
